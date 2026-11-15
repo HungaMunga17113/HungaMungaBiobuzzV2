@@ -59,10 +59,6 @@ public class RobotConfig {
         public static double AIM_TURN_SCALE = 0.2;
         public static double STICK_DB = 0.03;
         public static double TURN_SPEED = 0.8; // max rot power (after the curve)
-
-        public static double PINPOINT_STALE_MS = 250; // no pinpoint data this long -> robot-centric fallback
-
-        public static double TELEMETRY_MS = 50;
     }
 
     public static class ShooterConfig {
