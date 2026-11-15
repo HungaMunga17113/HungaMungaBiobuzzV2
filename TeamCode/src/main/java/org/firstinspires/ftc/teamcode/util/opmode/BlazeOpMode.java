@@ -13,6 +13,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.pedro.BlazePinpointLocalizer;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
+import org.firstinspires.ftc.teamcode.util.hardware.Hw;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +28,7 @@ public abstract class BlazeOpMode extends DummyPlugOpMode {
 
     protected final FtcDashboard dashboard = FtcDashboard.getInstance();
     private final List<DcMotorEx> motors = new ArrayList<>();
+    protected Hw hw;
     private BlazePinpointLocalizer pinpoint;
     private Follower follower;
     private VoltageSensor battery;
@@ -56,6 +58,7 @@ public abstract class BlazeOpMode extends DummyPlugOpMode {
         initializeBlazeFTC();
         engageMotorAcceleration();
         battery = hardwareMap.voltageSensor.iterator().next();
+        hw = new Hw(hardwareMap);
 
         inInit = true;
         onInit();
@@ -64,6 +67,7 @@ public abstract class BlazeOpMode extends DummyPlugOpMode {
 
         while (opModeInInit()) {
             onInitLoop();
+            for (String name : hw.missing()) telemetry.addLine("missing: " + name + " (stubbed)");
             if (pinpoint != null) telemetry.addLine("keep still, pinpoint is calibrating");
             telemetry.update();
             sleep(50);
@@ -91,7 +95,17 @@ public abstract class BlazeOpMode extends DummyPlugOpMode {
 
     protected final DcMotorEx motor(String name, Direction direction) {
         requireInit("motor");
-        DcMotorEx m = hardwareMap.get(DcMotorEx.class, name);
+        return setup(hw.get(DcMotorEx.class, name), direction);
+    }
+
+    /** no-op stub if the motor isn't on the robot yet */
+    protected final DcMotorEx optionalMotor(String name, Direction direction) {
+        requireInit("optionalMotor");
+        DcMotorEx m = hw.orStub(DcMotorEx.class, name);
+        return Hw.isStub(m) ? m : setup(m, direction);
+    }
+
+    private DcMotorEx setup(DcMotorEx m, Direction direction) {
         m.setDirection(direction);
         m.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         m.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
