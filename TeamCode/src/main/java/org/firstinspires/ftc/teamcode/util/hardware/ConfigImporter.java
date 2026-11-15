@@ -30,7 +30,7 @@ public final class ConfigImporter {
     private final Map<String, HardwareConfig.Kind> custom;
     private final List<String> warnings = new ArrayList<>();
 
-    private ConfigImporter(Map<String, HardwareConfig.Kind> custom) {
+    ConfigImporter(Map<String, HardwareConfig.Kind> custom) {
         this.custom = custom;
     }
 

@@ -10,6 +10,7 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction;
 
 import org.firstinspires.ftc.teamcode.RobotConfig.MotorConfig;
 import org.firstinspires.ftc.teamcode.RobotConfig.Names;
+import org.firstinspires.ftc.teamcode.util.drivetrain.MecanumMath;
 
 /**
  * single wheel (forward):  lb fl  rb fr  lt bl  rt br
@@ -45,12 +46,12 @@ public class DtTester extends LinearOpMode {
             else if (gamepad1.right_bumper) { p[2] = s; test = "frontRight only, should spin forward"; }
             else if (gamepad1.left_trigger > 0.5) { p[1] = s; test = "backLeft only, should spin forward"; }
             else if (gamepad1.right_trigger > 0.5) { p[3] = s; test = "backRight only, should spin forward"; }
-            else if (gamepad1.dpad_up) { p = mix(s, 0, 0); test = "forward: all +"; }
-            else if (gamepad1.dpad_down) { p = mix(-s, 0, 0); test = "backward: all -"; }
-            else if (gamepad1.dpad_right) { p = mix(0, s, 0); test = "strafe right: fl+ bl- fr- br+"; }
-            else if (gamepad1.dpad_left) { p = mix(0, -s, 0); test = "strafe left: fl- bl+ fr+ br-"; }
-            else if (gamepad1.b) { p = mix(0, 0, s); test = "turn cw: left +, right -"; }
-            else if (gamepad1.x) { p = mix(0, 0, -s); test = "turn ccw: left -, right +"; }
+            else if (gamepad1.dpad_up) { p = MecanumMath.mix(s, 0, 0); test = "forward: all +"; }
+            else if (gamepad1.dpad_down) { p = MecanumMath.mix(-s, 0, 0); test = "backward: all -"; }
+            else if (gamepad1.dpad_right) { p = MecanumMath.mix(0, s, 0); test = "strafe right: fl+ bl- fr- br+"; }
+            else if (gamepad1.dpad_left) { p = MecanumMath.mix(0, -s, 0); test = "strafe left: fl- bl+ fr+ br-"; }
+            else if (gamepad1.b) { p = MecanumMath.mix(0, 0, s); test = "turn cw: left +, right -"; }
+            else if (gamepad1.x) { p = MecanumMath.mix(0, 0, -s); test = "turn ccw: left -, right +"; }
 
             telemetry.addData("test", test);
             for (int i = 0; i < 4; i++) {
@@ -80,16 +81,5 @@ public class DtTester extends LinearOpMode {
         m.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         m.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         return m;
-    }
-
-    /** fl, bl, fr, br */
-    private static double[] mix(double forward, double strafe, double turn) {
-        double d = Math.max(Math.abs(forward) + Math.abs(strafe) + Math.abs(turn), 1);
-        return new double[]{
-                (forward + strafe + turn) / d,
-                (forward - strafe + turn) / d,
-                (forward - strafe - turn) / d,
-                (forward + strafe - turn) / d
-        };
     }
 }

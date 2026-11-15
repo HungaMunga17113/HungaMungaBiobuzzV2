@@ -10,6 +10,7 @@ import org.firstinspires.ftc.teamcode.RobotConfig.DrivetrainConfig;
 import org.firstinspires.ftc.teamcode.RobotConfig.MotorConfig;
 import org.firstinspires.ftc.teamcode.RobotConfig.Names;
 import org.firstinspires.ftc.teamcode.util.control.Toggle;
+import org.firstinspires.ftc.teamcode.util.drivetrain.MecanumMath;
 import org.firstinspires.ftc.teamcode.util.opmode.BlazeOpMode;
 
 /**
@@ -74,18 +75,14 @@ public class BlazeDt extends BlazeOpMode {
         cmdY = slowDrive ? scale * rawY : curve(rawY);
         cmdRot = slowTurn ? scale * rawRot : DrivetrainConfig.TURN_SPEED * curve(rawRot);
 
-        double x = cmdX, y = cmdY;
-        if (fieldCentric && !pinpointStale()) {
-            double cos = Math.cos(heading), sin = Math.sin(heading);
-            x = cmdX * cos + cmdY * sin;
-            y = cmdY * cos - cmdX * sin;
-        }
-
-        double denom = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(cmdRot), 1.0);
-        setPower(0, frontLeft, (y + x + cmdRot) / denom);
-        setPower(1, backLeft, (y - x + cmdRot) / denom);
-        setPower(2, frontRight, (y - x - cmdRot) / denom);
-        setPower(3, backRight, (y + x - cmdRot) / denom);
+        double[] r = fieldCentric && !pinpointStale()
+                ? MecanumMath.fieldToRobot(cmdX, cmdY, heading)
+                : new double[]{cmdX, cmdY};
+        double[] p = MecanumMath.mix(r[1], r[0], cmdRot);
+        setPower(0, frontLeft, p[0]);
+        setPower(1, backLeft, p[1]);
+        setPower(2, frontRight, p[2]);
+        setPower(3, backRight, p[3]);
     }
 
     private void setPower(int i, DcMotorEx m, double power) {
@@ -99,9 +96,7 @@ public class BlazeDt extends BlazeOpMode {
     }
 
     private double deadband(double input) {
-        double db = DrivetrainConfig.STICK_DB;
-        if (Math.abs(input) < db) return 0;
-        return (input - Math.signum(input) * db) / (1 - db);
+        return MecanumMath.deadband(input, DrivetrainConfig.STICK_DB);
     }
 
     @Override
