@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** hardwareMap wrapper so a half-built robot still runs */
+/** hardwareMap wrapper for optional subsystems */
 public final class Hw {
     private final HardwareMap map;
     private final List<String> missing = new ArrayList<>();

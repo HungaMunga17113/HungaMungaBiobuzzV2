@@ -4,6 +4,7 @@ import static org.firstinspires.ftc.teamcode.util.hardware.HardwareConfig.Type.*
 
 import com.acmerobotics.dashboard.config.Config;
 
+import org.firstinspires.ftc.teamcode.util.Conversions;
 import org.firstinspires.ftc.teamcode.util.drivetrain.Curve;
 import org.firstinspires.ftc.teamcode.util.drivetrain.CurveParams;
 import org.firstinspires.ftc.teamcode.util.hardware.HardwareConfig;
@@ -36,6 +37,7 @@ public class RobotConfig {
         public static final String FRONT_RIGHT = "frontRight";
         public static final String BACK_RIGHT = "backRight";
         public static final String PINPOINT = "pinpoint";
+        public static final String FLYWHEEL = "flywheel";
         private Names() {}
     }
 
@@ -45,7 +47,7 @@ public class RobotConfig {
         public static Direction frontLeft = FORWARD;
         public static Direction backRight = REVERSE;
         public static Direction frontRight = REVERSE;
-        public static Direction shooter = REVERSE;
+        public static Direction flywheel = REVERSE;
         // public static Direction transfer = FORWARD;
         public static Direction intake = FORWARD;
 
@@ -61,12 +63,27 @@ public class RobotConfig {
         public static double TURN_SPEED = 0.8; // max rot power (after the curve)
     }
 
+    @Config("Shooter")
     public static class ShooterConfig {
-        public static double kP = 0;
-        public static double kI = 0;
-        public static double kD = 0;
-        public static double kF = 0;
-        public static double targetVel = 5000;
+        public static double TICKS_PER_REV = Conversions.TPR_6000_RPM; // flywheel motor encoder
+        public static double GEAR_RATIO = 1; // flywheel rev per motor rev
+        public static double targetRpm = 5000;
+        public static boolean voltageComp = true;
+
+        // ex controller: power at Voltage.NOMINAL, per flywheel rpm
+        public static double kP = 0, kI = 0, kD = 0, kF = 0;
+        public static double kS = 0, kV = 0, kA = 0;
+
+        // sdk hub velocity pidf, hub units (defaults are the hub's)
+        public static double sdkP = 10, sdkI = 3, sdkD = 0, sdkF = 0;
+
+        public static double motorTps(double flywheelRpm) {
+            return flywheelRpm / GEAR_RATIO * TICKS_PER_REV / 60.0;
+        }
+
+        public static double flywheelRpm(double motorTps) {
+            return motorTps * 60.0 / TICKS_PER_REV * GEAR_RATIO;
+        }
     }
 
 }

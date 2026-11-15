@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SVA Tuner</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1b1f24;--dim:#5f6b7a;--line:#d9dee5;--a:#2f6fdf;--b:#e0633a;--c:#2a9d6f;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#121417;--card:#1b1e23;--ink:#e6e9ee;--dim:#97a1ad;--line:#2c3139;--a:#6c9cff;--b:#ff8a5c;--c:#4cc996;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:20px 16px 40px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
+h1{font-size:20px;margin:0}
+select,button{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+button{cursor:pointer}
+.gains{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.gain{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.gain b{display:block;font-size:12px;color:var(--dim);font-weight:500}
+.gain span{font:600 18px ui-monospace,SFMono-Regular,Menlo,monospace}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:16px}
+.card h2{font-size:14px;margin:0 0 4px}
+.card p{margin:0 0 8px;color:var(--dim);font-size:12px}
+canvas{width:100%;height:280px;display:block}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.grid{grid-template-columns:1fr}}
+pre{margin:0;overflow-x:auto;font:13px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);padding:10px;border-radius:6px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--dim);margin-top:4px}
+.legend i{display:inline-block;width:10px;height:3px;margin-right:5px;vertical-align:middle}
+#msg{color:var(--dim)}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>SVA tuner</h1>
+  <div><select id="runs"></select> <button id="reload">refresh</button></div>
+</header>
+<div id="msg">loading…</div>
+<div id="out" hidden>
+  <div class="gains" id="gains"></div>
+  <div class="card">
+    <h2>paste into RobotConfig.ShooterConfig</h2>
+    <pre id="code"></pre>
+    <button id="copy" style="margin-top:8px">copy</button>
+  </div>
+  <div class="grid">
+    <div class="card">
+      <h2>ramp: power vs speed</h2>
+      <p>nominal power (scaled to <span class="nom"></span> V) against flywheel rpm, line is kS + kV·v</p>
+      <canvas id="ramp"></canvas>
+      <div class="legend"><span><i style="background:var(--a)"></i>measured</span><span><i style="background:var(--b)"></i>fit</span></div>
+    </div>
+    <div class="card">
+      <h2>step: speed over time</h2>
+      <p>measured rpm against the fitted model driven by the same power</p>
+      <canvas id="step"></canvas>
+      <div class="legend"><span><i style="background:var(--a)"></i>measured</span><span><i style="background:var(--b)"></i>model</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>battery</h2>
+    <p>voltage through the ramp then the step, already divided out of the fit</p>
+    <canvas id="volts"></canvas>
+    <div class="legend"><span><i style="background:var(--c)"></i>ramp</span><span><i style="background:var(--b)"></i>step</span></div>
+  </div>
+</div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (v, d) => Math.abs(v) < 1e-3 && v !== 0 ? v.toExponential(d) : v.toFixed(d + 2);
+
+function plot(canvas, series, xLabel, yLabel) {
+  const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  const g = canvas.getContext('2d'); g.scale(dpr, dpr);
+  const pad = {l: 56, r: 12, t: 10, b: 34};
+  let xs = [], ys = [];
+  series.forEach(s => { xs = xs.concat(s.x); ys = ys.concat(s.y); });
+  let x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(0, ...ys), y1 = Math.max(...ys);
+  if (x1 === x0) x1 = x0 + 1; if (y1 === y0) y1 = y0 + 1;
+  y1 += (y1 - y0) * 0.05;
+  const X = v => pad.l + (v - x0) / (x1 - x0) * (w - pad.l - pad.r);
+  const Y = v => h - pad.b - (v - y0) / (y1 - y0) * (h - pad.t - pad.b);
+  g.strokeStyle = css('--line'); g.fillStyle = css('--dim'); g.font = '11px system-ui'; g.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const yv = y0 + (y1 - y0) * i / 4, xv = x0 + (x1 - x0) * i / 4;
+    g.beginPath(); g.moveTo(pad.l, Y(yv)); g.lineTo(w - pad.r, Y(yv)); g.stroke();
+    g.textAlign = 'right'; g.fillText(+yv.toPrecision(3), pad.l - 6, Y(yv) + 4);
+    g.textAlign = 'center'; g.fillText(+xv.toPrecision(3), X(xv), h - pad.b + 14);
+  }
+  g.fillText(xLabel, (pad.l + w - pad.r) / 2, h - 4);
+  g.save(); g.translate(12, (pad.t + h - pad.b) / 2); g.rotate(-Math.PI / 2); g.fillText(yLabel, 0, 0); g.restore();
+  series.forEach(s => {
+    g.strokeStyle = g.fillStyle = css(s.color);
+    if (s.dots) { s.x.forEach((v, i) => g.fillRect(X(v) - 1, Y(s.y[i]) - 1, 2, 2)); return; }
+    g.lineWidth = 2; g.beginPath();
+    s.x.forEach((v, i) => i ? g.lineTo(X(v), Y(s.y[i])) : g.moveTo(X(v), Y(s.y[i]))); g.stroke();
+  });
+}
+
+let run = null;
+function render() {
+  const r = run.results, nom = run.nominal;
+  document.querySelectorAll('.nom').forEach(e => e.textContent = nom);
+  const gains = [['kS', fmt(r.kS, 3)], ['kV', fmt(r.kV, 3)], ['kA', fmt(r.kA, 3)], ['r²', r.r2.toFixed(4)],
+    ['sdk F (approx)', r.sdkF.toFixed(2)], ['samples used', r.used]];
+  $('gains').innerHTML = gains.map(([k, v]) => `<div class="gain"><b>${k}</b><span>${v}</span></div>`).join('');
+  $('code').textContent = `public static double kS = ${r.kS}, kV = ${r.kV}, kA = ${r.kA};\npublic static double sdkF = ${r.sdkF.toFixed(3)};`;
+
+  const pn = s => s.p.map((p, i) => p * s.volts[i] / nom);
+  const keep = run.ramp.rpm.map(v => Math.abs(v) >= run.minRpm);
+  const rx = run.ramp.rpm.filter((_, i) => keep[i]), ry = pn(run.ramp).filter((_, i) => keep[i]);
+  const lx = [Math.min(...rx), Math.max(...rx)];
+  plot($('ramp'), [{x: rx, y: ry, color: '--a', dots: true}, {x: lx, y: lx.map(v => r.kS + r.kV * v), color: '--b'}], 'rpm', 'nominal power');
+
+  const s = run.step, sp = pn(s), model = [s.rpm[0]];
+  for (let i = 1; i < s.t.length; i++) {
+    const v = model[i - 1], a = r.kA > 0 ? (sp[i - 1] - r.kS * Math.sign(v || 1) - r.kV * v) / r.kA : 0;
+    model.push(Math.max(0, v + a * (s.t[i] - s.t[i - 1])));
+  }
+  plot($('step'), [{x: s.t, y: s.rpm, color: '--a'}, {x: s.t, y: model, color: '--b'}], 'seconds', 'rpm');
+
+  const end = run.ramp.t[run.ramp.t.length - 1] || 0;
+  plot($('volts'), [{x: run.ramp.t, y: run.ramp.volts, color: '--c'}, {x: s.t.map(t => t + end), y: s.volts, color: '--b'}], 'seconds', 'volts');
+}
+
+async function load(name) {
+  $('msg').textContent = 'loading ' + name + '…';
+  const res = await fetch('/tuning/sva/run?name=' + encodeURIComponent(name), {cache: 'no-store'});
+  if (!res.ok) { $('msg').textContent = 'could not load ' + name; return; }
+  run = await res.json();
+  $('msg').textContent = name;
+  $('out').hidden = false;
+  render();
+}
+
+async function refresh() {
+  const runs = await (await fetch('/tuning/sva/runs', {cache: 'no-store'})).json();
+  $('runs').innerHTML = runs.map(n => `<option>${n}</option>`).join('');
+  if (!runs.length) { $('msg').textContent = 'no runs yet, run the SVATuner opmode'; $('out').hidden = true; return; }
+  load(runs[0]);
+}
+
+$('runs').onchange = e => load(e.target.value);
+$('reload').onclick = refresh;
+$('copy').onclick = () => { navigator.clipboard && navigator.clipboard.writeText($('code').textContent); };
+window.onresize = () => run && render();
+refresh().catch(e => $('msg').textContent = 'error: ' + e);
+</script>
+</body>
+</html>
