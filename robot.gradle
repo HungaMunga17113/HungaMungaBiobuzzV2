@@ -1,0 +1,392 @@
+import groovy.xml.XmlSlurper
+import groovy.xml.XmlUtil
+import javax.inject.Inject
+
+abstract class RobotTask extends DefaultTask {
+    static final String REMOTE_DIR = '/sdcard/FIRST'
+    static final String PKG = 'com.qualcomm.ftcrobotcontroller'
+    static final String OS = System.getProperty('os.name').toLowerCase()
+    static final boolean MAC = OS.contains('mac')
+    static final boolean WIN = OS.contains('win')
+
+    @Inject abstract ExecOperations getExecOps()
+    @Internal File adb
+    @Internal String serial
+    @Internal String ssid
+    @Internal String pass
+    @Internal File configDir
+    @Internal String prev
+
+    Map run(List<String> cmd) {
+        def out = new ByteArrayOutputStream()
+        try {
+            def r = execOps.exec {
+                commandLine cmd
+                standardOutput = out
+                errorOutput = out
+                ignoreExitValue = true
+            }
+            [code: r.exitValue, out: out.toString().trim()]
+        } catch (e) {
+            [code: -1, out: e.message]
+        }
+    }
+
+    String adbRun(List<String> args, boolean check = true) {
+        def r = run([adb.path] + args)
+        if (check && r.code != 0) throw new GradleException("adb ${args.join(' ')} failed:\n${r.out}")
+        r.out
+    }
+
+    String adbDevice(List<String> args) { adbRun(['-s', serial] + args) }
+
+    boolean online() {
+        adbRun(['devices'], false).readLines().drop(1).any {
+            def cols = it.trim().split('\\s+')
+            cols.length >= 2 && cols[0] == serial && cols[1] == 'device'
+        }
+    }
+
+    boolean anyOnline() {
+        adbRun(['devices'], false).readLines().drop(1).any { it.trim().split('\\s+').last() == 'device' }
+    }
+
+    boolean reachable() {
+        def (host, port) = serial.split(':')
+        try {
+            new Socket().withCloseable { it.connect(new InetSocketAddress(host, port as int), 1000) }
+            true
+        } catch (IOException ignored) {
+            false
+        }
+    }
+
+    // wifi
+
+    String iface() {
+        def lines = run(['networksetup', '-listallhardwareports']).out.readLines()
+        def i = lines.findIndexOf { it.contains('Wi-Fi') }
+        i >= 0 && i + 1 < lines.size() ? lines[i + 1].split(':', 2)[1].trim() : 'en0'
+    }
+
+    String currentSsid() {
+        if (MAC) {
+            return run(['networksetup', '-listpreferredwirelessnetworks', iface()]).out.readLines().drop(1).find()?.trim()
+        }
+        if (WIN) {
+            def line = run(['netsh', 'wlan', 'show', 'interfaces']).out.readLines().find { it =~ /^\s+SSID\s+:/ }
+            return line?.split(':', 2)?.getAt(1)?.trim()
+        }
+        run(['nmcli', '-t', '-f', 'active,ssid', 'dev', 'wifi']).out.readLines().find { it.startsWith('yes:') }?.substring(4)
+    }
+
+    void addProfile(String name, String pw) {
+        if (run(['netsh', 'wlan', 'show', 'profiles', "name=$name"]).code == 0) return
+        def n = XmlUtil.escapeXml(name)
+        def f = File.createTempFile('rc-wlan', '.xml')
+        f.text = """<?xml version="1.0"?>
+<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+  <name>$n</name>
+  <SSIDConfig><SSID><name>$n</name></SSID></SSIDConfig>
+  <connectionType>ESS</connectionType>
+  <connectionMode>manual</connectionMode>
+  <MSM><security>
+    <authEncryption><authentication>WPA2PSK</authentication><encryption>AES</encryption><useOneX>false</useOneX></authEncryption>
+    <sharedKey><keyType>passPhrase</keyType><protected>false</protected><keyMaterial>${XmlUtil.escapeXml(pw)}</keyMaterial></sharedKey>
+  </security></MSM>
+</WLANProfile>"""
+        run(['netsh', 'wlan', 'add', 'profile', "filename=${f.path}", 'user=current'])
+        f.delete()
+    }
+
+    boolean joinWifi(String name, String pw) {
+        if (MAC) {
+            // networksetup exits 0 on failure, errors go to stdout
+            def r = run(['networksetup', '-setairportnetwork', iface(), name] + (pw ? [pw] : []))
+            if (r.out) logger.lifecycle(r.out)
+            return r.code == 0 && !r.out
+        }
+        if (WIN) {
+            if (pw) addProfile(name, pw)
+            return run(['netsh', 'wlan', 'connect', "name=$name"]).code == 0
+        }
+        run(pw ? ['nmcli', 'dev', 'wifi', 'connect', name, 'password', pw] : ['nmcli', 'con', 'up', 'id', name]).code == 0
+    }
+
+    void resetWifi() {
+        if (MAC) {
+            def i = iface()
+            run(['networksetup', '-setairportpower', i, 'off'])
+            run(['networksetup', '-setairportpower', i, 'on'])
+        } else if (WIN) {
+            run(['netsh', 'wlan', 'disconnect'])
+        } else {
+            run(['nmcli', 'radio', 'wifi', 'off'])
+            run(['nmcli', 'radio', 'wifi', 'on'])
+        }
+    }
+
+    void fail(String msg) {
+        if (prev && prev != ssid) {
+            logger.lifecycle("rejoining $prev")
+            if (!joinWifi(prev, null)) resetWifi()
+        }
+        throw new GradleException(msg)
+    }
+
+    void joinRc() {
+        if (reachable()) return
+        prev = currentSsid()
+        logger.lifecycle("joining $ssid")
+        if (!joinWifi(ssid, pass)) fail("couldn't join $ssid")
+        def end = System.currentTimeMillis() + 15000
+        while (!reachable()) {
+            if (System.currentTimeMillis() > end) fail("rc not reachable at $serial")
+            sleep(1000)
+        }
+    }
+
+    // adb
+
+    void connect() {
+        if (online()) return
+        if (!serial.contains(':')) throw new GradleException("$serial is not connected over usb")
+        joinRc()
+        adbRun(['disconnect', serial], false)
+        adbRun(['connect', serial], false)
+        if (!online()) fail("adb connect to $serial failed")
+        //run('gradlew ')
+        logger.lifecycle("connected to $serial")
+    }
+
+    void restartApp() {
+        adbDevice(['shell', "am force-stop $PKG"])
+        adbDevice(['shell', "monkey -p $PKG -c android.intent.category.LAUNCHER 1"])
+        logger.lifecycle('rc restarted')
+    }
+}
+
+def resolveAdb = {
+    if (project.hasProperty('robot.adb')) return file(project.property('robot.adb'))
+    def exe = RobotTask.WIN ? 'adb.exe' : 'adb'
+    def android = project.extensions.findByName('android')
+    if (android != null) {
+        try {
+            def f = android.adbExecutable
+            if (f?.exists()) return f
+        } catch (ignored) {
+        }
+    }
+    def props = new Properties()
+    def local = rootProject.file('local.properties')
+    if (local.exists()) local.withInputStream { props.load(it) }
+    def sdk = [props.getProperty('sdk.dir'), System.getenv('ANDROID_HOME'), System.getenv('ANDROID_SDK_ROOT')]
+            .find { it && new File(it, "platform-tools/$exe").exists() }
+    sdk ? new File(sdk, "platform-tools/$exe") : new File(exe)
+}
+
+def resolveScrcpy = {
+    if (project.hasProperty('robot.scrcpy')) return file(project.property('robot.scrcpy'))
+    def exe = RobotTask.WIN ? 'scrcpy.exe' : 'scrcpy'
+    def home = System.getProperty('user.home')
+    // ide launched from finder doesn't get the shell path
+    def dirs = (System.getenv('PATH') ?: '').split(File.pathSeparator).toList()
+    dirs += RobotTask.WIN ? [
+            "${System.getenv('LOCALAPPDATA')}/Microsoft/WinGet/Links",
+            "$home/scoop/shims",
+            'C:/ProgramData/chocolatey/bin',
+    ] : ['/opt/local/bin', '/opt/homebrew/bin', '/usr/local/bin', "$home/.local/bin"]
+    dirs.collect { new File(it, exe) }.find { it.canExecute() }
+}
+
+def setting = { String prop, String env, String fallback ->
+    project.findProperty(prop) ?: System.getenv(env) ?: fallback
+}
+
+def robotTask = { String name, String desc, Closure action ->
+    tasks.register(name, RobotTask) { t ->
+        t.group = 'robot'
+        t.description = desc
+        t.adb = resolveAdb()
+        t.serial = setting('robot.serial', 'RC_SERIAL', '192.168.43.1:5555')
+        t.ssid = setting('robot.ssid', 'RC_SSID', '17113-RC')
+        t.pass = setting('robot.pass', 'RC_PASS', 'hungamunga')
+        t.configDir = rootProject.file(project.findProperty('robot.configDir') ?: 'robot-config')
+        t.doLast { action(t) }
+    }
+}
+
+robotTask('rcConnect', 'join the rc wifi and adb connect, rejoin previous wifi on failure') { RobotTask t ->
+    if (t.online()) {
+        t.logger.lifecycle("already connected to ${t.serial}")
+        return
+    }
+    t.connect()
+}
+
+robotTask('rcRestart', 'restart the robot controller app') { RobotTask t ->
+    t.connect()
+    t.restartApp()
+}
+
+robotTask('rcMirror', 'mirror the rc screen with scrcpy') { RobotTask t ->
+    def exe = resolveScrcpy()
+    if (!exe) {
+        def hint = RobotTask.WIN ? 'winget install Genymobile.scrcpy' : 'sudo port install scrcpy  (or: brew install scrcpy)'
+        throw new GradleException("scrcpy not found, install it:\n  $hint\nor set robot.scrcpy=/path/to/scrcpy in ~/.gradle/gradle.properties")
+    }
+    t.connect()
+    def log = new File(t.temporaryDir, 'scrcpy.log')
+    def extra = (project.findProperty('robot.scrcpyArgs') ?: '').toString().tokenize()
+    def pb = new ProcessBuilder([exe.path, '-s', t.serial, '--no-audio', '--window-title', 'Robot Controller'] + extra)
+            .redirectErrorStream(true)
+            .redirectOutput(log)
+    pb.environment().put('ADB', t.adb.path)
+    def p = pb.start()
+    sleep(2000)
+    if (!p.alive) throw new GradleException("scrcpy exited (${p.exitValue()}):\n${log.text.trim()}")
+    t.logger.lifecycle('mirroring rc')
+}
+
+// sloth 0.3.2 crashes on boot ("fatal class locating error") if any OnBot Java class is built on the rc,
+// it passes jar entry names like org/firstinspires/ftc/teamcode/Foo to Class.forName. moves them aside instead of deleting.
+robotTask('clearOnBotJava', 'move OnBot Java sources/builds off to /sdcard/FIRST/java.bak (fixes the sloth class locating crash)') { RobotTask t ->
+    t.connect()
+    t.logger.lifecycle(t.adbDevice(['shell', "find ${RobotTask.REMOTE_DIR}/java -type f 2>/dev/null; true"]) ?: 'no OnBot Java files')
+    t.adbDevice(['shell', "rm -rf ${RobotTask.REMOTE_DIR}/java.bak; [ -d ${RobotTask.REMOTE_DIR}/java ] && mv ${RobotTask.REMOTE_DIR}/java ${RobotTask.REMOTE_DIR}/java.bak; true"])
+    t.logger.lifecycle("moved ${RobotTask.REMOTE_DIR}/java to ${RobotTask.REMOTE_DIR}/java.bak")
+    t.restartApp()
+}
+
+// device types declared in TeamCode with @MotorType/@ServoType/@I2cDeviceType/..., as KIND=xmlTag
+def customDeviceTypes = {
+    def kinds = [MotorType: 'MOTOR', ServoType: 'SERVO', I2cDeviceType: 'I2C', AnalogSensorType: 'ANALOG', DigitalIoDeviceType: 'DIGITAL']
+    def found = [] as LinkedHashSet
+    fileTree('src/main/java') { include '**/*.java'; exclude 'org/firstinspires/ftc/teamcode/util/hardware/**' }.each { f ->
+        def src = f.text
+        kinds.each { ann, kind ->
+            if (src =~ /@$ann\b/) (src =~ /xmlTag\s*=\s*"([^"]+)"/).each { all, tag -> found << "$kind=$tag".toString() }
+        }
+    }
+    found as List
+}
+
+// RobotConfig.HARDWARE (plain java in TeamCode) -> build/robot-config/<name>.xml
+def generatedConfigDir = layout.buildDirectory.dir('robot-config')
+def generateConfig = tasks.register('generateConfig', JavaExec) {
+    group = 'robot'
+    description = 'check RobotConfig.HARDWARE and generate the robot configuration xml from it'
+    def compile = tasks.named('compileDebugJavaWithJavac')
+    dependsOn compile
+    classpath = files(compile.flatMap { it.destinationDirectory })
+    mainClass = 'org.firstinspires.ftc.teamcode.util.hardware.ConfigWriter'
+    outputs.dir generatedConfigDir
+    outputs.upToDateWhen { false }
+    doFirst { generatedConfigDir.get().asFile.deleteDir() }
+    argumentProviders.add({ [generatedConfigDir.get().asFile.path] + customDeviceTypes() } as CommandLineArgumentProvider)
+}
+
+robotTask('pushConfig', 'generate the robot configuration from RobotConfig.java, push it to the rc and restart the rc app') { RobotTask t ->
+    def files = (generatedConfigDir.get().asFile.listFiles({ it.name.endsWith('.xml') } as FileFilter) ?: []).toList()
+    if (!files) throw new GradleException("generateConfig produced no xml")
+    t.connect()
+    files.each { f ->
+        t.adbDevice(['push', f.path, "${RobotTask.REMOTE_DIR}/${f.name}"])
+        t.logger.lifecycle("pushed ${f.name}")
+    }
+    t.restartApp()
+}
+tasks.named('pushConfig') { dependsOn generateConfig }
+
+// the HardwareConfig classes on their own, so pull works even if the rest of TeamCode doesn't compile
+def hardwareToolDir = layout.buildDirectory.dir('hardware-config-tool')
+def compileHardwareTool = tasks.register('compileHardwareConfigTool', JavaCompile) {
+    source = fileTree('src/main/java/org/firstinspires/ftc/teamcode/util/hardware') { include '*.java' }
+    classpath = files()
+    destinationDirectory = hardwareToolDir
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
+    options.compilerArgs << '-Xlint:-options'
+}
+
+def robotConfigJava = file('src/main/java/org/firstinspires/ftc/teamcode/RobotConfig.java')
+
+// replaces everything between "HardwareConfig HARDWARE =" and the statement's closing semicolon
+def replaceHardware = { String src, Closure expr ->
+    def m = src =~ /HardwareConfig\s+HARDWARE\s*=/
+    if (!m.find()) throw new GradleException("couldn't find 'HardwareConfig HARDWARE =' in ${robotConfigJava.name}")
+    int start = m.end(), i = start, depth = 0
+    String quote = null
+    while (i < src.length()) {
+        String c = src[i], next = i + 1 < src.length() ? src[i + 1] : ''
+        if (quote) {
+            if (c == '\\') i++
+            else if (c == quote) quote = null
+        } else if (c == '"' || c == "'") quote = c
+        else if (c == '/' && next == '/') { i = src.indexOf('\n', i); if (i < 0) break; continue }
+        else if (c == '/' && next == '*') { i = src.indexOf('*/', i) + 1; if (i <= 0) break }
+        else if (c in ['(', '{', '[']) depth++
+        else if (c in [')', '}', ']']) depth--
+        else if (c == ';' && depth == 0) break
+        i++
+    }
+    if (i < 0 || i >= src.length()) throw new GradleException("couldn't find the end of the HARDWARE statement")
+    def lineStart = src.lastIndexOf('\n', m.start()) + 1
+    def indent = (src.substring(lineStart, m.start()) =~ /^\s*/)[0]
+    src.substring(0, start) + ' ' + expr(indent) + src.substring(i)
+}
+
+robotTask('pullConfig', 'pull the robot configuration from the rc and write it into RobotConfig.HARDWARE') { RobotTask t ->
+    def src = robotConfigJava.text
+    def currentName = (src =~ /new\s+HardwareConfig\s*\(\s*"([^"]*)"/).with { it.find() ? it.group(1) : null }
+    def dir = layout.buildDirectory.dir('robot-config-pulled').get().asFile
+    dir.mkdirs()
+    File xml
+    String configName
+    if (project.hasProperty('robot.configFile')) {
+        // convert a local xml instead of pulling (e.g. a config saved earlier)
+        xml = file(project.property('robot.configFile'))
+        configName = xml.name - ~/\.xml$/
+    } else {
+        t.connect()
+        def remote = t.adbDevice(['shell', "grep -l '<Robot' ${RobotTask.REMOTE_DIR}/*.xml 2>/dev/null; true"])
+                .readLines()*.trim().findAll { it.endsWith('.xml') }
+                .collect { it.substring(it.lastIndexOf('/') + 1) - ~/\.xml$/ }
+        if (!remote) throw new GradleException("no robot configurations in ${RobotTask.REMOTE_DIR}")
+        def wanted = project.findProperty('robot.configName')
+        configName = wanted ?: (currentName in remote ? currentName : remote.size() == 1 ? remote[0] : null)
+        if (!configName) {
+            throw new GradleException("the rc has several configurations: ${remote.join(', ')}\n" +
+                    "rename HardwareConfig in RobotConfig.java to the one you want, or pass -Probot.configName=<name>")
+        }
+        if (!(configName in remote)) throw new GradleException("no configuration named $configName on the rc (found: ${remote.join(', ')})")
+        xml = new File(dir, "${configName}.xml")
+        t.adbDevice(['pull', "${RobotTask.REMOTE_DIR}/${configName}.xml", xml.path])
+        t.logger.lifecycle("pulled ${configName}.xml")
+    }
+    def updated = replaceHardware(src) { String indent ->
+        def javaOut = new File(dir, "${configName}.java.txt")
+        t.execOps.javaexec {
+            classpath = files(hardwareToolDir)
+            mainClass = 'org.firstinspires.ftc.teamcode.util.hardware.ConfigImporter'
+            args = [xml.path, configName, indent, javaOut.path] + customDeviceTypes()
+        }
+        javaOut.getText('UTF-8')
+    }
+    def imp = 'import static org.firstinspires.ftc.teamcode.util.hardware.HardwareConfig.Type.*;'
+    if (!updated.contains(imp)) updated = updated.replaceFirst(/(package [^;]+;\s*\n)/, "\$1\n$imp\n")
+    if (updated == src) {
+        t.logger.lifecycle('RobotConfig.java already matches the rc')
+    } else {
+        robotConfigJava.text = updated
+        t.logger.lifecycle("updated RobotConfig.HARDWARE from $configName")
+    }
+}
+tasks.named('pullConfig') { dependsOn compileHardwareTool }
+
+tasks.matching { it.name == 'deploySloth' }.configureEach {
+    doFirst {
+        def t = tasks.named('rcConnect', RobotTask).get()
+        if (!t.anyOnline()) t.connect()
+    }
+}
