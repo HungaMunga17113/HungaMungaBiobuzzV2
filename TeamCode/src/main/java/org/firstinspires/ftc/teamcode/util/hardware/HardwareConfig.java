@@ -182,6 +182,30 @@ public final class HardwareConfig {
         return name;
     }
 
+    /** device names of a kind, in config order */
+    public List<String> names(Kind kind) {
+        List<String> out = new ArrayList<>();
+        for (Device d : devices) if (d.kind == kind) out.add(d.name);
+        return out;
+    }
+
+    /** xml type tag, or null if no such device */
+    public String typeOf(String deviceName) {
+        Device d = find(deviceName);
+        return d == null ? null : d.type;
+    }
+
+    /** e.g. "Control Hub motor port 2" */
+    public String whereIs(String deviceName) {
+        Device d = find(deviceName);
+        return d == null ? null : d.where;
+    }
+
+    private Device find(String deviceName) {
+        for (Device d : devices) if (d.name.equals(deviceName)) return d;
+        return null;
+    }
+
     // ---------------------------------------------------------------------------------------------
     // building
 
