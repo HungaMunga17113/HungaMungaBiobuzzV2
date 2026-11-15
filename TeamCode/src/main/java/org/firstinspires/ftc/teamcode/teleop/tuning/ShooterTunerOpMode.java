@@ -7,16 +7,17 @@ import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.teamcode.RobotConfig.MotorConfig;
 import org.firstinspires.ftc.teamcode.RobotConfig.Names;
 import org.firstinspires.ftc.teamcode.RobotConfig.ShooterConfig;
 import org.firstinspires.ftc.teamcode.util.control.PIDFControllerEx;
 import org.firstinspires.ftc.teamcode.util.control.Toggle;
 import org.firstinspires.ftc.teamcode.util.control.Voltage;
+import org.firstinspires.ftc.teamcode.util.hardware.MotorGroup;
 
 import java.util.List;
 
@@ -38,7 +39,7 @@ public class ShooterTunerOpMode extends LinearOpMode {
     public static double STEP_S = 2;
     public static boolean ALLOW_REVERSE = false;
 
-    private DcMotorEx flywheel;
+    private MotorGroup flywheel;
     private DcMotor.RunMode runMode;
     private final double[] sentPidf = {Double.NaN, Double.NaN, Double.NaN, Double.NaN};
 
@@ -46,8 +47,7 @@ public class ShooterTunerOpMode extends LinearOpMode {
     public void runOpMode() {
         List<LynxModule> hubs = hardwareMap.getAll(LynxModule.class);
         for (LynxModule h : hubs) h.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
-        flywheel = hardwareMap.get(DcMotorEx.class, Names.FLYWHEEL);
-        flywheel.setDirection(MotorConfig.flywheel);
+        flywheel = MotorGroup.of(hardwareMap, Names.FLYWHEEL, MotorConfig.flywheel());
         flywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         setRunMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         VoltageSensor battery = hardwareMap.voltageSensor.iterator().next();
@@ -122,6 +122,8 @@ public class ShooterTunerOpMode extends LinearOpMode {
             telemetry.addData("target", "%.0f rpm", setpoint);
             telemetry.addData("actual", "%.0f rpm  (err %+.0f)", rpm, setpoint - rpm);
             telemetry.addData("power", "%.3f", power);
+            telemetry.addData("motors", "%d  spread %.0f rpm  %.1f A", flywheel.size(),
+                    ShooterConfig.flywheelRpm(flywheel.velocitySpread()), flywheel.getCurrent(CurrentUnit.AMPS));
             telemetry.addData("battery", "%.2f V%s", volts, comp ? "  (compensating)" : "");
             telemetry.addData("rise 90%", Double.isNaN(stats.riseS) ? "-" : String.format("%.2f s", stats.riseS));
             telemetry.addData("overshoot", "%.1f %%", stats.overshootPct());

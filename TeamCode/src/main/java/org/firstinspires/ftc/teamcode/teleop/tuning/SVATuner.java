@@ -7,13 +7,13 @@ import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.teamcode.RobotConfig.MotorConfig;
 import org.firstinspires.ftc.teamcode.RobotConfig.Names;
 import org.firstinspires.ftc.teamcode.RobotConfig.ShooterConfig;
 import org.firstinspires.ftc.teamcode.util.control.Voltage;
+import org.firstinspires.ftc.teamcode.util.hardware.MotorGroup;
 import org.firstinspires.ftc.teamcode.util.tuning.SvaFit;
 import org.firstinspires.ftc.teamcode.util.tuning.TuningFiles;
 
@@ -37,7 +37,7 @@ public class SVATuner extends LinearOpMode {
     public static double ACCEL_WINDOW_S = 0.06;
     public static String URL = "http://192.168.43.1:8080/tuning/sva";
 
-    private DcMotorEx flywheel;
+    private MotorGroup flywheel;
     private VoltageSensor battery;
     private List<LynxModule> hubs;
     private final FtcDashboard dashboard = FtcDashboard.getInstance();
@@ -46,8 +46,7 @@ public class SVATuner extends LinearOpMode {
     public void runOpMode() {
         hubs = hardwareMap.getAll(LynxModule.class);
         for (LynxModule h : hubs) h.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
-        flywheel = hardwareMap.get(DcMotorEx.class, Names.FLYWHEEL);
-        flywheel.setDirection(MotorConfig.flywheel);
+        flywheel = MotorGroup.of(hardwareMap, Names.FLYWHEEL, MotorConfig.flywheel());
         flywheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         flywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         battery = hardwareMap.voltageSensor.iterator().next();
@@ -133,7 +132,7 @@ public class SVATuner extends LinearOpMode {
     private void show(String phase, double t, double p, double volts, double rpm, int n) {
         telemetry.addData("phase", "%s  %.1fs", phase, t);
         telemetry.addData("power", "%.2f  (%.2f nominal)", p, Voltage.toNominal(p, volts));
-        telemetry.addData("rpm", "%.0f", rpm);
+        telemetry.addData("rpm", "%.0f  (spread %.0f)", rpm, ShooterConfig.flywheelRpm(flywheel.velocitySpread()));
         telemetry.addData("battery", "%.2f V", volts);
         telemetry.addData("samples", n);
         telemetry.update();

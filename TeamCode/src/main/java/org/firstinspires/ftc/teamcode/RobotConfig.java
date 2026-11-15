@@ -27,7 +27,8 @@ public class RobotConfig {
                     .servo(3, "transfer"))
             .expansionHub(2, hub -> hub
                     .motor(2, "intake", GOBILDA_5202)
-                    .motor(3, "flywheel", GOBILDA_5202)
+                    .motor(1, "flywheel2", GOBILDA_5202)
+                    .motor(3, "flywheel1", GOBILDA_5202)
                     .i2c(1, "pinpoint", GOBILDA_PINPOINT));
 
     /** device names, must match HARDWARE above */
@@ -37,7 +38,8 @@ public class RobotConfig {
         public static final String FRONT_RIGHT = "frontRight";
         public static final String BACK_RIGHT = "backRight";
         public static final String PINPOINT = "pinpoint";
-        public static final String FLYWHEEL = "flywheel";
+        /** add a name here (and a direction in MotorConfig) for more flywheel motors */
+        public static final String[] FLYWHEEL = {"flywheel1", "flywheel2"};
         private Names() {}
     }
 
@@ -47,10 +49,15 @@ public class RobotConfig {
         public static Direction frontLeft = FORWARD;
         public static Direction backRight = REVERSE;
         public static Direction frontRight = REVERSE;
-        public static Direction flywheel = REVERSE;
+        public static Direction flywheel1 = REVERSE;
+        public static Direction flywheel2 = FORWARD;
         // public static Direction transfer = FORWARD;
         public static Direction intake = FORWARD;
 
+        /** same order as Names.FLYWHEEL */
+        public static Direction[] flywheel() {
+            return new Direction[]{flywheel1, flywheel2};
+        }
     }
 
     @Config("Drivetrain")
@@ -65,7 +72,7 @@ public class RobotConfig {
 
     @Config("Shooter")
     public static class ShooterConfig {
-        public static double TICKS_PER_REV = Conversions.TPR_6000_RPM; // flywheel motor encoder
+        public static double TICKS_PER_REV = Conversions.TPR_6000_RPM; // per flywheel motor encoder
         public static double GEAR_RATIO = 1; // flywheel rev per motor rev
         public static double targetRpm = 5000;
         public static boolean voltageComp = true;
