@@ -22,7 +22,7 @@ import org.firstinspires.ftc.teamcode.util.hardware.MotorGroup;
 import java.util.List;
 
 /**
- * gains live in ShooterConfig (dashboard "Shooter"), MODE picks the controller.
+ * gains live in ShooterConfig (dashboard "Shooter"), MODE for controller picker
  * a           on / off
  * y           switch sdk pidf / ex
  * x           step test between STEP_LOW_RPM and targetRpm

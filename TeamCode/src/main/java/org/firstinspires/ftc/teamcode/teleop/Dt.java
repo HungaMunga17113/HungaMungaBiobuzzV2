@@ -7,7 +7,6 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.RobotConfig.DrivetrainConfig;
-import org.firstinspires.ftc.teamcode.RobotConfig.MotorConfig;
 import org.firstinspires.ftc.teamcode.RobotConfig.Names;
 import org.firstinspires.ftc.teamcode.util.control.Toggle;
 import org.firstinspires.ftc.teamcode.util.drivetrain.MecanumMath;
@@ -33,10 +32,10 @@ public class Dt extends RobotOpMode {
 
     @Override
     protected void onInit() {
-        frontLeft = motor(Names.FRONT_LEFT, MotorConfig.frontLeft);
-        backLeft = motor(Names.BACK_LEFT, MotorConfig.backLeft);
-        frontRight = motor(Names.FRONT_RIGHT, MotorConfig.frontRight);
-        backRight = motor(Names.BACK_RIGHT, MotorConfig.backRight);
+        frontLeft = motor(Names.FRONT_LEFT);
+        backLeft = motor(Names.BACK_LEFT);
+        frontRight = motor(Names.FRONT_RIGHT);
+        backRight = motor(Names.BACK_RIGHT);
         pinpoint();
     }
 

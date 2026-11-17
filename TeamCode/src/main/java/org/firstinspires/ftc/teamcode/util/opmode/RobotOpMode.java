@@ -16,6 +16,8 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.RobotConfig;
+import org.firstinspires.ftc.teamcode.RobotConfig.MotorConfig;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
 import org.firstinspires.ftc.teamcode.util.hardware.Hw;
 
@@ -66,6 +68,8 @@ public abstract class RobotOpMode extends LinearOpMode {
         battery = hardwareMap.voltageSensor.iterator().next();
         hw = new Hw(hardwareMap);
 
+        List<String> drift = RobotConfig.drift();
+
         inInit = true;
         onInit();
         inInit = false;
@@ -75,6 +79,7 @@ public abstract class RobotOpMode extends LinearOpMode {
             if (pinpoint != null) pinpoint.update();
             onInitLoop();
             for (String name : hw.missing()) telemetry.addLine("missing: " + name + " (stubbed)");
+            for (String d : drift) telemetry.addLine("RobotConfig: " + d);
             if (pinpoint != null) telemetry.addData("pinpoint", pinpointDevice.getDeviceStatus());
             telemetry.update();
             sleep(50);
@@ -105,9 +110,21 @@ public abstract class RobotOpMode extends LinearOpMode {
         for (LynxModule hub : hubs) hub.clearBulkCache();
     }
 
+    /** direction from MotorConfig.<name> */
+    protected final DcMotorEx motor(String name) {
+        return motor(name, MotorConfig.direction(name));
+    }
+
     protected final DcMotorEx motor(String name, Direction direction) {
         requireInit("motor");
         return setup(hw.get(DcMotorEx.class, name), direction);
+    }
+
+    /** no-op stub if the motor isn't on the robot yet, direction from MotorConfig.<name> */
+    protected final DcMotorEx optionalMotor(String name) {
+        requireInit("optionalMotor");
+        DcMotorEx m = hw.orStub(DcMotorEx.class, name);
+        return Hw.isStub(m) ? m : setup(m, MotorConfig.direction(name));
     }
 
     /** no-op stub if the motor isn't on the robot yet */

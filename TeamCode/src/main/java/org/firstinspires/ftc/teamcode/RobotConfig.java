@@ -9,6 +9,11 @@ import org.firstinspires.ftc.teamcode.util.drivetrain.Curve;
 import org.firstinspires.ftc.teamcode.util.drivetrain.CurveParams;
 import org.firstinspires.ftc.teamcode.util.hardware.HardwareConfig;
 import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.List;
 import static com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.FORWARD;
 import static com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.REVERSE;
 
@@ -31,18 +36,21 @@ public class RobotConfig {
                     .motor(3, "flywheel1", GOBILDA_5202)
                     .i2c(1, "pinpoint", GOBILDA_PINPOINT));
 
-    /** device names, must match HARDWARE above */
+    /** device names, checked against HARDWARE by drift() */
     public static final class Names {
         public static final String BACK_LEFT = "backLeft";
         public static final String FRONT_LEFT = "frontLeft";
         public static final String FRONT_RIGHT = "frontRight";
         public static final String BACK_RIGHT = "backRight";
         public static final String PINPOINT = "pinpoint";
+        public static final String INTAKE = "intake";
+        public static final String TRANSFER = "transfer";
         /** add a name here (and a direction in MotorConfig) for more flywheel motors */
         public static final String[] FLYWHEEL = {"flywheel1", "flywheel2"};
         private Names() {}
     }
 
+    /** one Direction field per motor in HARDWARE, named exactly like the device */
     @Config("Motors")
     public static final class MotorConfig {
         public static Direction backLeft = FORWARD;
@@ -56,8 +64,60 @@ public class RobotConfig {
 
         /** same order as Names.FLYWHEEL */
         public static Direction[] flywheel() {
-            return new Direction[]{flywheel1, flywheel2};
+            return directions(Names.FLYWHEEL);
         }
+
+        /** the field named deviceName, throws if there isn't one */
+        public static Direction direction(String deviceName) {
+            Direction d = find(deviceName);
+            if (d == null) throw new IllegalArgumentException("no MotorConfig." + deviceName + " (add a Direction field named after the motor)");
+            return d;
+        }
+
+        public static Direction[] directions(String... deviceNames) {
+            Direction[] out = new Direction[deviceNames.length];
+            for (int i = 0; i < deviceNames.length; i++) out[i] = direction(deviceNames[i]);
+            return out;
+        }
+
+        /** the field named deviceName, or null */
+        public static Direction find(String deviceName) {
+            try {
+                Field f = MotorConfig.class.getField(deviceName);
+                return f.getType() == Direction.class ? (Direction) f.get(null) : null;
+            } catch (ReflectiveOperationException e) {
+                return null;
+            }
+        }
+
+        private MotorConfig() {}
+    }
+
+    /** where Names / MotorConfig disagree with HARDWARE, empty when in sync */
+    public static List<String> drift() {
+        List<String> out = new ArrayList<>();
+        try {
+            for (Field f : Names.class.getFields()) {
+                if (!Modifier.isStatic(f.getModifiers())) continue;
+                Object v = f.get(null);
+                String[] names = v instanceof String[] ? (String[]) v : v instanceof String ? new String[]{(String) v} : new String[0];
+                for (String n : names) {
+                    if (HARDWARE.typeOf(n) == null) out.add("Names." + f.getName() + " = \"" + n + "\" isn't in HARDWARE");
+                }
+            }
+        } catch (IllegalAccessException e) {
+            throw new IllegalStateException(e);
+        }
+        List<String> motors = HARDWARE.names(HardwareConfig.Kind.MOTOR);
+        for (String m : motors) {
+            if (MotorConfig.find(m) == null) out.add("motor \"" + m + "\" has no MotorConfig." + m + " direction");
+        }
+        for (Field f : MotorConfig.class.getFields()) {
+            if (Modifier.isStatic(f.getModifiers()) && f.getType() == Direction.class && !motors.contains(f.getName())) {
+                out.add("MotorConfig." + f.getName() + " isn't a motor in HARDWARE");
+            }
+        }
+        return out;
     }
 
     @Config("Drivetrain")

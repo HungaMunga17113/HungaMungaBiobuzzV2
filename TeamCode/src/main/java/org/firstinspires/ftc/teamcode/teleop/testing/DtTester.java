@@ -6,7 +6,6 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction;
 
 import org.firstinspires.ftc.teamcode.RobotConfig.MotorConfig;
 import org.firstinspires.ftc.teamcode.RobotConfig.Names;
@@ -28,10 +27,10 @@ public class DtTester extends LinearOpMode {
     public void runOpMode() {
         for (LynxModule hub : hardwareMap.getAll(LynxModule.class)) hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
         DcMotorEx[] m = {
-                motor(Names.FRONT_LEFT, MotorConfig.frontLeft),
-                motor(Names.BACK_LEFT, MotorConfig.backLeft),
-                motor(Names.FRONT_RIGHT, MotorConfig.frontRight),
-                motor(Names.BACK_RIGHT, MotorConfig.backRight)
+                motor(Names.FRONT_LEFT),
+                motor(Names.BACK_LEFT),
+                motor(Names.FRONT_RIGHT),
+                motor(Names.BACK_RIGHT)
         };
 
         telemetry.addLine("put the robot on blocks");
@@ -74,10 +73,10 @@ public class DtTester extends LinearOpMode {
         for (DcMotorEx mm : m) if (mm != null) mm.setPower(0);
     }
 
-    private DcMotorEx motor(String name, Direction d) {
+    private DcMotorEx motor(String name) {
         DcMotorEx m = hardwareMap.tryGet(DcMotorEx.class, name);
         if (m == null) return null;
-        m.setDirection(d);
+        m.setDirection(MotorConfig.direction(name));
         m.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         m.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         return m;

@@ -42,13 +42,6 @@ public class HardwareConfigTest {
     }
 
     @Test
-    public void namesClassMatchesTheConfig() {
-        for (String name : Arrays.asList(Names.FRONT_LEFT, Names.BACK_LEFT, Names.FRONT_RIGHT, Names.BACK_RIGHT, Names.PINPOINT)) {
-            assertTrue(name + " isn't in RobotConfig.HARDWARE", HW.typeOf(name) != null);
-        }
-    }
-
-    @Test
     public void lookupsByKind() {
         assertTrue(HW.names(HardwareConfig.Kind.MOTOR).containsAll(Arrays.asList(Names.FRONT_LEFT, Names.BACK_RIGHT)));
         assertEquals(Collections.singletonList(Names.PINPOINT), HW.names(HardwareConfig.Kind.I2C));
