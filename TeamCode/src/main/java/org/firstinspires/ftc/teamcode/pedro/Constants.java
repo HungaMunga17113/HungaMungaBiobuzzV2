@@ -4,6 +4,7 @@ import com.pedropathing.algorithm.Foresight;
 import com.pedropathing.algorithm.ForesightConfig;
 import com.pedropathing.controllers.Controller;
 import com.pedropathing.follower.Follower;
+import com.pedropathing.localization.Localizer;
 import com.pedropathing.math.Matrix;
 import com.pedropathing.math.Vector2D;
 import com.pedropathing.revhub.drivetrains.Mecanum;
@@ -63,8 +64,8 @@ public class Constants {
         return new Follower(new PinpointLocalizer(h, localizerConfig), new Mecanum(h, drivetrainConfig), new Foresight(foresightConfig));
     }
 
-    /** blaze follower, motor accel must already be engaged */
-    public static Follower create(HardwareMap h, BlazePinpointLocalizer localizer) {
+    /** follower on a localizer the caller already owns */
+    public static Follower create(HardwareMap h, Localizer localizer) {
         return new Follower(localizer, new Mecanum(h, drivetrainConfig), new Foresight(foresightConfig));
     }
 }

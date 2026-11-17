@@ -11,14 +11,14 @@ import org.firstinspires.ftc.teamcode.RobotConfig.MotorConfig;
 import org.firstinspires.ftc.teamcode.RobotConfig.Names;
 import org.firstinspires.ftc.teamcode.util.control.Toggle;
 import org.firstinspires.ftc.teamcode.util.drivetrain.MecanumMath;
-import org.firstinspires.ftc.teamcode.util.opmode.BlazeOpMode;
+import org.firstinspires.ftc.teamcode.util.opmode.RobotOpMode;
 
 /**
  * dpad up       toggle fcd
  * back (share)  reset heading for fcd
  */
-@TeleOp(name = "Drivetrain (Blaze)", group = "Main")
-public class BlazeDt extends BlazeOpMode {
+@TeleOp(name = "Drivetrain", group = "Main")
+public class Dt extends RobotOpMode {
     private DcMotorEx frontLeft, backLeft, frontRight, backRight;
     private final double[] lastPower = {Double.NaN, Double.NaN, Double.NaN, Double.NaN};
 
@@ -47,7 +47,7 @@ public class BlazeDt extends BlazeOpMode {
 
     @Override
     protected void onLoop() {
-        if (zeroPending && pinpoint().hasData()) {
+        if (zeroPending && !pinpointStale()) {
             pinpoint().setHeading(0);
             zeroPending = false;
         }

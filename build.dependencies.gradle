@@ -1,7 +1,6 @@
 repositories {
     mavenCentral()
     maven { url 'https://repo.dairy.foundation/releases/'}
-    maven { url = 'https://maven.anygeneric.dev/' }
     google() // Needed for androidx
 }
 
@@ -20,9 +19,5 @@ dependencies {
     implementation 'com.pedropathing:tuning:1.0.3'
     implementation 'com.pedropathing.ivy:pedro:1.1.1'
 
-    implementation 'dev.anygeneric:blazeftc:0.1.66'
-    implementation 'dev.anygeneric:blazeftc_pedro3:0.1.66'
-
     implementation 'com.acmerobotics.slothboard:dashboard:0.3.2+0.6.0'
-
 }

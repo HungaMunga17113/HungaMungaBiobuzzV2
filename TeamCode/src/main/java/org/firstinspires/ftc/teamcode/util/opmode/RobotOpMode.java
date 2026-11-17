@@ -5,31 +5,37 @@ import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.math.Pose;
+import com.pedropathing.revhub.localizers.PinpointLocalizer;
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver.DeviceStatus;
+import com.qualcomm.hardware.lynx.LynxModule;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
-import org.firstinspires.ftc.teamcode.pedro.BlazePinpointLocalizer;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
 import org.firstinspires.ftc.teamcode.util.hardware.Hw;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import dev.anygeneric.blazeftc.DummyPlugOpMode;
-
-/** owns blaze startup order + the pinpoint; get hardware in onInit only */
-@Config("BlazeOpMode")
-public abstract class BlazeOpMode extends DummyPlugOpMode {
+/**
+ * owns startup order, bulk caching + the pinpoint; get hardware in onInit only.
+ * each loop: clear bulk cache -> update pinpoint (or follower, which updates it) -> onLoop
+ */
+@Config("RobotOpMode")
+public abstract class RobotOpMode extends LinearOpMode {
     public static double TELEMETRY_MS = 50;
-    public static double PINPOINT_STALE_MS = 250;
 
     protected final FtcDashboard dashboard = FtcDashboard.getInstance();
     private final List<DcMotorEx> motors = new ArrayList<>();
+    private List<LynxModule> hubs;
     protected Hw hw;
-    private BlazePinpointLocalizer pinpoint;
+    private PinpointLocalizer pinpoint;
+    private GoBildaPinpointDriver pinpointDevice;
     private Follower follower;
     private VoltageSensor battery;
     private boolean inInit;
@@ -37,8 +43,8 @@ public abstract class BlazeOpMode extends DummyPlugOpMode {
     private final ElapsedTime rateTimer = new ElapsedTime();
     private final ElapsedTime voltageTimer = new ElapsedTime();
     private final ElapsedTime telemetryTimer = new ElapsedTime();
-    private int loops, lastSamples;
-    protected double voltage = Double.NaN, loopHz, pinpointHz;
+    private int loops;
+    protected double voltage = Double.NaN, loopHz;
 
     protected abstract void onInit();
 
@@ -54,27 +60,27 @@ public abstract class BlazeOpMode extends DummyPlugOpMode {
     protected void onTelemetry(Telemetry ds, TelemetryPacket dash) {}
 
     @Override
-    public final void runOpModeInBlaze() {
-        initializeBlazeFTC();
-        engageMotorAcceleration();
+    public final void runOpMode() {
+        hubs = hardwareMap.getAll(LynxModule.class);
+        for (LynxModule hub : hubs) hub.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
         battery = hardwareMap.voltageSensor.iterator().next();
         hw = new Hw(hardwareMap);
 
         inInit = true;
         onInit();
         inInit = false;
-        if (pinpoint != null) pinpoint.engage();
 
         while (opModeInInit()) {
+            clearBulkCache();
+            if (pinpoint != null) pinpoint.update();
             onInitLoop();
             for (String name : hw.missing()) telemetry.addLine("missing: " + name + " (stubbed)");
-            if (pinpoint != null) telemetry.addLine("keep still, pinpoint is calibrating");
+            if (pinpoint != null) telemetry.addData("pinpoint", pinpointDevice.getDeviceStatus());
             telemetry.update();
             sleep(50);
         }
         if (isStopRequested()) return;
 
-        runBlazeFTC(0);
         rateTimer.reset();
         voltageTimer.reset();
         telemetryTimer.reset();
@@ -82,8 +88,10 @@ public abstract class BlazeOpMode extends DummyPlugOpMode {
         onStart();
         try {
             while (opModeIsActive()) {
-                onLoop();
+                clearBulkCache();
                 if (follower != null) follower.update();
+                else if (pinpoint != null) pinpoint.update();
+                onLoop();
                 stats();
             }
         } finally {
@@ -91,6 +99,10 @@ public abstract class BlazeOpMode extends DummyPlugOpMode {
             for (DcMotorEx m : motors) m.setPower(0);
             onStop();
         }
+    }
+
+    private void clearBulkCache() {
+        for (LynxModule hub : hubs) hub.clearBulkCache();
     }
 
     protected final DcMotorEx motor(String name, Direction direction) {
@@ -113,15 +125,17 @@ public abstract class BlazeOpMode extends DummyPlugOpMode {
         return m;
     }
 
-    protected final BlazePinpointLocalizer pinpoint() {
+    /** updated by the base before onLoop */
+    protected final PinpointLocalizer pinpoint() {
         if (pinpoint == null) {
             requireInit("pinpoint");
-            pinpoint = new BlazePinpointLocalizer(hardwareMap, Constants.localizerConfig);
+            pinpoint = new PinpointLocalizer(hardwareMap, Constants.localizerConfig);
+            pinpointDevice = hardwareMap.get(GoBildaPinpointDriver.class, Constants.localizerConfig.name.get());
         }
         return pinpoint;
     }
 
-    /** updated by the base after onLoop */
+    /** updated by the base before onLoop (this also updates the pinpoint) */
     protected final Follower follower() {
         if (follower == null) {
             requireInit("follower");
@@ -130,8 +144,9 @@ public abstract class BlazeOpMode extends DummyPlugOpMode {
         return follower;
     }
 
+    /** true if there's no pinpoint or it isn't reporting READY (calibrating, pod fault, bad read) */
     protected final boolean pinpointStale() {
-        return pinpoint == null || pinpoint.msSinceData() > PINPOINT_STALE_MS;
+        return pinpointDevice == null || pinpointDevice.getDeviceStatus() != DeviceStatus.READY;
     }
 
     private void requireInit(String what) {
@@ -141,10 +156,7 @@ public abstract class BlazeOpMode extends DummyPlugOpMode {
     private void stats() {
         loops++;
         if (rateTimer.seconds() >= 0.5) {
-            int samples = pinpoint == null ? 0 : pinpoint.samples();
             loopHz = loops / rateTimer.seconds();
-            pinpointHz = (samples - lastSamples) / rateTimer.seconds();
-            lastSamples = samples;
             loops = 0;
             rateTimer.reset();
         }
@@ -161,7 +173,7 @@ public abstract class BlazeOpMode extends DummyPlugOpMode {
         packet.put("battery (V)", voltage);
         if (pinpoint != null) {
             Pose p = pinpoint.pose();
-            packet.put("pinpoint (Hz)", pinpointHz);
+            packet.put("pinpoint status", pinpointDevice.getDeviceStatus().toString());
             packet.put("x (in)", p.x());
             packet.put("y (in)", p.y());
             packet.put("heading (deg)", Math.toDegrees(p.heading()));
