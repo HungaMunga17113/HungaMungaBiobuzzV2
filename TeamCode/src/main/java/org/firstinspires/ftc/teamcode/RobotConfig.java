@@ -144,6 +144,8 @@ public class RobotConfig {
         // sdk hub velocity pidf, hub units (defaults are the hub's)
         public static double sdkP = 10, sdkI = 3, sdkD = 0, sdkF = 0;
 
+        public static double READY_TOLERANCE_RPM = 150; // atSpeed() band
+
         public static double motorTps(double flywheelRpm) {
             return flywheelRpm / GEAR_RATIO * TICKS_PER_REV / 60.0;
         }
@@ -153,4 +155,26 @@ public class RobotConfig {
         }
     }
 
+    /** 0 = forward (intake side), ccw+ (unit circle, seen from above) */
+    @Config("Turret")
+    public static class TurretConfig {
+        public static double MIN_DEG = -170;
+        public static double MAX_DEG = 170;
+        public static double OFFSET_FORWARD = 0; // turret pivot from robot center, in
+        public static double OFFSET_LEFT = 0;
+        public static double LEAD_S = 0; // shoot-on-the-move lead (~ball flight time), 0 = off
+    }
+
+    @Config("Intake")
+    public static class IntakeConfig {
+        public static double IN_POWER = 1;
+        public static double OUT_POWER = -0.6;
+    }
+
+    @Config("Transfer")
+    public static class TransferConfig {
+        public static double REST_POS = 0;
+        public static double FEED_POS = 0.5;
+        public static double FEED_MS = 250; // time at FEED_POS be4 returning
+    }
 }

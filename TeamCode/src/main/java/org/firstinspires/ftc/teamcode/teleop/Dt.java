@@ -1,56 +1,68 @@
 package org.firstinspires.ftc.teamcode.teleop;
 
+import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.pedropathing.math.Velocity;
+import com.pedropathing.revhub.localizers.PinpointLocalizer;
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.RobotConfig.DrivetrainConfig;
 import org.firstinspires.ftc.teamcode.RobotConfig.Names;
 import org.firstinspires.ftc.teamcode.util.control.Toggle;
 import org.firstinspires.ftc.teamcode.util.drivetrain.MecanumMath;
-import org.firstinspires.ftc.teamcode.util.opmode.RobotOpMode;
+import org.firstinspires.ftc.teamcode.util.hardware.RobotHardware;
 
 /**
  * dpad up       toggle fcd
  * back (share)  reset heading for fcd
  */
 @TeleOp(name = "Drivetrain", group = "Main")
-public class Dt extends RobotOpMode {
+public class Dt extends OpMode {
+    private RobotHardware robot;
     private DcMotorEx frontLeft, backLeft, frontRight, backRight;
-    private final double[] lastPower = {Double.NaN, Double.NaN, Double.NaN, Double.NaN};
+    private PinpointLocalizer pinpoint;
+    private final FtcDashboard dashboard = FtcDashboard.getInstance();
 
     private boolean fieldCentric = DrivetrainConfig.useFieldCentric;
     private boolean zeroPending = true;
-    private final Toggle modeButton = new Toggle();
-    private final Toggle resetButton = new Toggle();
+    private final Toggle modeButton = new Toggle(), resetButton = new Toggle();
     private long resets;
-
-    private double rawX, rawY, rawRot, cmdX, cmdY, cmdRot, heading;
-    private boolean slowDrive, slowTurn;
+    private final ElapsedTime loopTimer = new ElapsedTime();
 
     @Override
-    protected void onInit() {
-        frontLeft = motor(Names.FRONT_LEFT);
-        backLeft = motor(Names.BACK_LEFT);
-        frontRight = motor(Names.FRONT_RIGHT);
-        backRight = motor(Names.BACK_RIGHT);
-        pinpoint();
+    public void init() {
+        robot = new RobotHardware(hardwareMap);
+        frontLeft = robot.motor(Names.FRONT_LEFT);
+        backLeft = robot.motor(Names.BACK_LEFT);
+        frontRight = robot.motor(Names.FRONT_RIGHT);
+        backRight = robot.motor(Names.BACK_RIGHT);
+        pinpoint = robot.pinpoint();
     }
 
     @Override
-    protected void onInitLoop() {
+    public void init_loop() {
+        robot.update();
+        robot.addInitWarnings(telemetry);
         telemetry.addData("mode", fieldCentric ? "FIELD" : "ROBOT");
     }
 
     @Override
-    protected void onLoop() {
-        if (zeroPending && !pinpointStale()) {
-            pinpoint().setHeading(0);
+    public void start() {
+        loopTimer.reset();
+    }
+
+    @Override
+    public void loop() {
+        robot.update();
+        boolean stale = robot.pinpointStale();
+        if (zeroPending && !stale) {
+            pinpoint.setHeading(0);
             zeroPending = false;
         }
-        heading = pinpoint().pose().heading();
+        double heading = pinpoint.pose().heading();
 
         if (modeButton.momentary(gamepad1.dpad_up)) fieldCentric = !fieldCentric;
         if (resetButton.momentary(gamepad1.back)) {
@@ -58,70 +70,50 @@ public class Dt extends RobotOpMode {
             resets++;
             gamepad1.rumble(150);
         }
-        drive();
-    }
 
-    private void drive() {
         // +y forward, +x right, +rot clockwise
-        rawX = deadband(gamepad1.left_stick_x);
-        rawY = -deadband(gamepad1.left_stick_y);
-        rawRot = deadband(gamepad1.right_stick_x);
-
-        slowDrive = gamepad1.left_stick_button;
-        slowTurn = gamepad1.right_stick_button;
+        double rawX = deadband(gamepad1.left_stick_x);
+        double rawY = -deadband(gamepad1.left_stick_y);
+        double rawRot = deadband(gamepad1.right_stick_x);
+        boolean slowDrive = gamepad1.left_stick_button, slowTurn = gamepad1.right_stick_button;
         double scale = DrivetrainConfig.AIM_TURN_SCALE;
-        cmdX = slowDrive ? scale * rawX : curve(rawX);
-        cmdY = slowDrive ? scale * rawY : curve(rawY);
-        cmdRot = slowTurn ? scale * rawRot : DrivetrainConfig.TURN_SPEED * curve(rawRot);
+        double x = slowDrive ? scale * rawX : curve(rawX);
+        double y = slowDrive ? scale * rawY : curve(rawY);
+        double rot = slowTurn ? scale * rawRot : DrivetrainConfig.TURN_SPEED * curve(rawRot);
 
-        double[] r = fieldCentric && !pinpointStale()
-                ? MecanumMath.fieldToRobot(cmdX, cmdY, heading)
-                : new double[]{cmdX, cmdY};
-        double[] p = MecanumMath.mix(r[1], r[0], cmdRot);
-        setPower(0, frontLeft, p[0]);
-        setPower(1, backLeft, p[1]);
-        setPower(2, frontRight, p[2]);
-        setPower(3, backRight, p[3]);
+        double[] r = fieldCentric && !stale ? MecanumMath.fieldToRobot(x, y, heading) : new double[]{x, y};
+        double[] p = MecanumMath.mix(r[1], r[0], rot);
+        frontLeft.setPower(p[0]);
+        backLeft.setPower(p[1]);
+        frontRight.setPower(p[2]);
+        backRight.setPower(p[3]);
+
+        telemetry.addData("mode", (fieldCentric ? "FIELD" : "ROBOT") + (slowDrive || slowTurn ? "  (slow)" : ""));
+        telemetry.addData("heading", "%.0f°", Math.toDegrees(heading));
+        if (stale) telemetry.addLine("!! PINPOINT LOST - robot-centric only");
+
+        Velocity v = pinpoint.velocity();
+        TelemetryPacket packet = new TelemetryPacket();
+        packet.put("field centric active", fieldCentric && !stale);
+        packet.put("angular vel (deg/s)", Math.toDegrees(v.omega));
+        packet.put("speed (in/s)", v.linSpeed());
+        packet.put("stick x / y / rot raw", String.format("%.2f %.2f %.2f", rawX, rawY, rawRot));
+        packet.put("power FL", p[0]);
+        packet.put("power BL", p[1]);
+        packet.put("power FR", p[2]);
+        packet.put("power BR", p[3]);
+        packet.put("pinpoint resets", resets);
+        packet.put("loop (ms)", loopTimer.milliseconds());
+        packet.put("battery (V)", robot.voltage());
+        loopTimer.reset();
+        dashboard.sendTelemetryPacket(packet);
     }
 
-    private void setPower(int i, DcMotorEx m, double power) {
-        if (Math.abs(power - lastPower[i]) < 1e-3 && !(power == 0 && lastPower[i] != 0)) return;
-        lastPower[i] = power;
-        m.setPower(power);
-    }
-
-    private double curve(double input) {
+    private static double curve(double input) {
         return DrivetrainConfig.DRIVE_CURVE.apply(input, DrivetrainConfig.CURVE_PARAMS);
     }
 
-    private double deadband(double input) {
+    private static double deadband(double input) {
         return MecanumMath.deadband(input, DrivetrainConfig.STICK_DB);
-    }
-
-    @Override
-    protected void onTelemetry(Telemetry ds, TelemetryPacket dash) {
-        boolean stale = pinpointStale();
-        ds.addData("mode", (fieldCentric ? "FIELD" : "ROBOT") + (slowDrive || slowTurn ? "  (slow)" : ""));
-        ds.addData("heading", "%.0f°", Math.toDegrees(heading));
-        if (stale) ds.addLine("!! PINPOINT LOST - robot-centric only");
-
-        Velocity v = pinpoint().velocity();
-        dash.put("mode", fieldCentric ? (stale ? "FIELD (no pinpoint -> robot)" : "FIELD-centric") : "ROBOT-centric");
-        dash.put("field centric active", fieldCentric && !stale);
-        dash.put("slow drive", slowDrive);
-        dash.put("slow turn", slowTurn);
-        dash.put("angular vel (deg/s)", Math.toDegrees(v.omega));
-        dash.put("speed (in/s)", v.linSpeed());
-        dash.put("stick x raw", rawX);
-        dash.put("stick y raw", rawY);
-        dash.put("stick rot raw", rawRot);
-        dash.put("stick x shaped", cmdX);
-        dash.put("stick y shaped", cmdY);
-        dash.put("stick rot shaped", cmdRot);
-        dash.put("power FL", lastPower[0]);
-        dash.put("power BL", lastPower[1]);
-        dash.put("power FR", lastPower[2]);
-        dash.put("power BR", lastPower[3]);
-        dash.put("pinpoint resets", resets);
     }
 }
