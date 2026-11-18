@@ -36,8 +36,18 @@ android {
     }
 }
 
+configurations {
+    mockitoAgent
+}
+
 dependencies {
     implementation project(':FtcRobotController')
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.mockito:mockito-core:5.14.2'
+    testImplementation 'org.mockito:mockito-core:5.20.0' // 5.14 can't mock on jdk 25 (android studio's jbr)
+    mockitoAgent('org.mockito:mockito-core:5.20.0') { transitive = false }
+}
+
+// load mockito as an agent instead of letting it self-attach (deprecated on newer jdks)
+tasks.withType(Test).configureEach {
+    jvmArgs "-javaagent:${configurations.mockitoAgent.asPath}"
 }

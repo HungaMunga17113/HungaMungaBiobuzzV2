@@ -17,7 +17,7 @@ import static com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.REVERSE;
 public class RobotConfig {
 
     /**
-     use pull/push config to manage this; remember to activate on the DS
+     use pull/push config run configs
      */
     public static final HardwareConfig HARDWARE = new HardwareConfig("TimmehV2")
             .controlHub(hub -> hub
@@ -32,7 +32,6 @@ public class RobotConfig {
                     .motor(3, "flywheel1", GOBILDA_5202)
                     .i2c(1, "pinpoint", GOBILDA_PINPOINT));
 
-    /** device names, checked against HARDWARE by drift() */
     public static final class Names {
         public static final String BACK_LEFT = "backLeft";
         public static final String FRONT_LEFT = "frontLeft";
