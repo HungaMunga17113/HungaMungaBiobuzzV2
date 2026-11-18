@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.teleop.testing;
 
+import org.firstinspires.ftc.teamcode.util.ConfigUtil;
 import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction;
 
 import org.firstinspires.ftc.teamcode.RobotConfig.MotorConfig;
@@ -9,7 +10,7 @@ final class TesterUtil {
 
     /** MotorConfig field with the device's name, or null */
     static Direction configuredDirection(String deviceName) {
-        return MotorConfig.find(deviceName);
+        return ConfigUtil.findDirection(deviceName);
     }
 
     static int wrapIndex(int i, int size) {

@@ -10,10 +10,6 @@ import org.firstinspires.ftc.teamcode.util.drivetrain.CurveParams;
 import org.firstinspires.ftc.teamcode.util.hardware.HardwareConfig;
 import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.List;
 import static com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.FORWARD;
 import static com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.REVERSE;
 
@@ -45,12 +41,11 @@ public class RobotConfig {
         public static final String PINPOINT = "pinpoint";
         public static final String INTAKE = "intake";
         public static final String TRANSFER = "transfer";
-        /** add a name here (and a direction in MotorConfig) for more flywheel motors */
         public static final String[] FLYWHEEL = {"flywheel1", "flywheel2"};
         private Names() {}
     }
 
-    /** one Direction field per motor in HARDWARE, named exactly like the device */
+    /** 1:1 names to HARDWARE */
     @Config("Motors")
     public static final class MotorConfig {
         public static Direction backLeft = FORWARD;
@@ -62,62 +57,7 @@ public class RobotConfig {
         // public static Direction transfer = FORWARD;
         public static Direction intake = FORWARD;
 
-        /** same order as Names.FLYWHEEL */
-        public static Direction[] flywheel() {
-            return directions(Names.FLYWHEEL);
-        }
-
-        /** the field named deviceName, throws if there isn't one */
-        public static Direction direction(String deviceName) {
-            Direction d = find(deviceName);
-            if (d == null) throw new IllegalArgumentException("no MotorConfig." + deviceName + " (add a Direction field named after the motor)");
-            return d;
-        }
-
-        public static Direction[] directions(String... deviceNames) {
-            Direction[] out = new Direction[deviceNames.length];
-            for (int i = 0; i < deviceNames.length; i++) out[i] = direction(deviceNames[i]);
-            return out;
-        }
-
-        /** the field named deviceName, or null */
-        public static Direction find(String deviceName) {
-            try {
-                Field f = MotorConfig.class.getField(deviceName);
-                return f.getType() == Direction.class ? (Direction) f.get(null) : null;
-            } catch (ReflectiveOperationException e) {
-                return null;
-            }
-        }
-
         private MotorConfig() {}
-    }
-
-    /** where Names / MotorConfig disagree with HARDWARE, empty when in sync */
-    public static List<String> drift() {
-        List<String> out = new ArrayList<>();
-        try {
-            for (Field f : Names.class.getFields()) {
-                if (!Modifier.isStatic(f.getModifiers())) continue;
-                Object v = f.get(null);
-                String[] names = v instanceof String[] ? (String[]) v : v instanceof String ? new String[]{(String) v} : new String[0];
-                for (String n : names) {
-                    if (HARDWARE.typeOf(n) == null) out.add("Names." + f.getName() + " = \"" + n + "\" isn't in HARDWARE");
-                }
-            }
-        } catch (IllegalAccessException e) {
-            throw new IllegalStateException(e);
-        }
-        List<String> motors = HARDWARE.names(HardwareConfig.Kind.MOTOR);
-        for (String m : motors) {
-            if (MotorConfig.find(m) == null) out.add("motor \"" + m + "\" has no MotorConfig." + m + " direction");
-        }
-        for (Field f : MotorConfig.class.getFields()) {
-            if (Modifier.isStatic(f.getModifiers()) && f.getType() == Direction.class && !motors.contains(f.getName())) {
-                out.add("MotorConfig." + f.getName() + " isn't a motor in HARDWARE");
-            }
-        }
-        return out;
     }
 
     @Config("Drivetrain")
@@ -132,8 +72,8 @@ public class RobotConfig {
 
     @Config("Shooter")
     public static class ShooterConfig {
-        public static double TICKS_PER_REV = Conversions.TPR_6000_RPM; // per flywheel motor encoder
-        public static double GEAR_RATIO = 1; // flywheel rev per motor rev
+        public static double TICKS_PER_REV = Conversions.TPR_6000_RPM;
+        public static double GEAR_RATIO = 1; // flywheel rev / motor rev
         public static double targetRpm = 5000;
         public static boolean voltageComp = true;
 
@@ -141,18 +81,11 @@ public class RobotConfig {
         public static double kP = 0, kI = 0, kD = 0, kF = 0;
         public static double kS = 0, kV = 0, kA = 0;
 
-        // sdk hub velocity pidf, hub units (defaults are the hub's)
-        public static double sdkP = 10, sdkI = 3, sdkD = 0, sdkF = 0;
+        // sdk hub velocity pidf, hub units
+        public static double sdkP = 5, sdkI = 3, sdkD = 0, sdkF = 12;
 
         public static double READY_TOLERANCE_RPM = 150; // atSpeed() band
 
-        public static double motorTps(double flywheelRpm) {
-            return flywheelRpm / GEAR_RATIO * TICKS_PER_REV / 60.0;
-        }
-
-        public static double flywheelRpm(double motorTps) {
-            return motorTps * 60.0 / TICKS_PER_REV * GEAR_RATIO;
-        }
     }
 
     /** 0 = forward (intake side), ccw+ (unit circle, seen from above) */
@@ -175,6 +108,6 @@ public class RobotConfig {
     public static class TransferConfig {
         public static double REST_POS = 0;
         public static double FEED_POS = 0.5;
-        public static double FEED_MS = 250; // time at FEED_POS be4 returning
+        public static double FEED_MS = 250; // time be4 return
     }
 }

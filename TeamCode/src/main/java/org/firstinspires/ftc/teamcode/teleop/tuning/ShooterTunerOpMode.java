@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.teleop.tuning;
 
+import org.firstinspires.ftc.teamcode.util.ConfigUtil;
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
@@ -11,7 +12,6 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
-import org.firstinspires.ftc.teamcode.RobotConfig.MotorConfig;
 import org.firstinspires.ftc.teamcode.RobotConfig.Names;
 import org.firstinspires.ftc.teamcode.RobotConfig.ShooterConfig;
 import org.firstinspires.ftc.teamcode.util.control.PIDFControllerEx;
@@ -47,7 +47,7 @@ public class ShooterTunerOpMode extends LinearOpMode {
     public void runOpMode() {
         List<LynxModule> hubs = hardwareMap.getAll(LynxModule.class);
         for (LynxModule h : hubs) h.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
-        flywheel = MotorGroup.of(hardwareMap, Names.FLYWHEEL, MotorConfig.flywheel());
+        flywheel = MotorGroup.of(hardwareMap, Names.FLYWHEEL, ConfigUtil.flywheelDirections());
         flywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         setRunMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         VoltageSensor battery = hardwareMap.voltageSensor.iterator().next();
@@ -84,7 +84,7 @@ public class ShooterTunerOpMode extends LinearOpMode {
                 volts += 0.3 * (battery.getVoltage() - volts);
                 voltTimer.reset();
             }
-            double rpm = ShooterConfig.flywheelRpm(flywheel.getVelocity());
+            double rpm = ConfigUtil.flywheelRpm(flywheel.getVelocity());
             double setpoint = !on ? 0
                     : stepping && ((int) (stepTimer.seconds() / STEP_S)) % 2 == 1 ? STEP_LOW_RPM
                     : ShooterConfig.targetRpm;
@@ -104,7 +104,7 @@ public class ShooterTunerOpMode extends LinearOpMode {
             } else if (MODE == Mode.SDK_PIDF) {
                 setRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
                 sendPidf(comp ? ShooterConfig.sdkF * Voltage.NOMINAL / volts : ShooterConfig.sdkF);
-                flywheel.setVelocity(ShooterConfig.motorTps(setpoint));
+                flywheel.setVelocity(ConfigUtil.motorTps(setpoint));
                 power = flywheel.getPower();
             } else {
                 setRunMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -123,7 +123,7 @@ public class ShooterTunerOpMode extends LinearOpMode {
             telemetry.addData("actual", "%.0f rpm  (err %+.0f)", rpm, setpoint - rpm);
             telemetry.addData("power", "%.3f", power);
             telemetry.addData("motors", "%d  spread %.0f rpm  %.1f A", flywheel.size(),
-                    ShooterConfig.flywheelRpm(flywheel.velocitySpread()), flywheel.getCurrent(CurrentUnit.AMPS));
+                    ConfigUtil.flywheelRpm(flywheel.velocitySpread()), flywheel.getCurrent(CurrentUnit.AMPS));
             telemetry.addData("battery", "%.2f V%s", volts, comp ? "  (compensating)" : "");
             telemetry.addData("rise 90%", Double.isNaN(stats.riseS) ? "-" : String.format("%.2f s", stats.riseS));
             telemetry.addData("overshoot", "%.1f %%", stats.overshootPct());

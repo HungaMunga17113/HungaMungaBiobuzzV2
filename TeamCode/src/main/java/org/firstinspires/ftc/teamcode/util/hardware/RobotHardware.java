@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.util.hardware;
 
+import org.firstinspires.ftc.teamcode.util.ConfigUtil;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.revhub.localizers.PinpointLocalizer;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
@@ -37,7 +38,7 @@ public final class RobotHardware {
     public final HardwareMap hardwareMap;
     public final Hw hw;
     private final List<LynxModule> hubs;
-    private final List<String> drift = RobotConfig.drift();
+    private final List<String> drift = ConfigUtil.drift();
     private final VoltageSensor battery;
     private PinpointLocalizer pinpoint;
     private GoBildaPinpointDriver pinpointDevice;
@@ -80,13 +81,13 @@ public final class RobotHardware {
 
     /** direction from MotorConfig.<name>, brake, no encoder pid */
     public DcMotorEx motor(String name) {
-        return setup(hw.get(DcMotorEx.class, name), MotorConfig.direction(name));
+        return setup(hw.get(DcMotorEx.class, name), ConfigUtil.direction(name));
     }
 
     /** no-op stub if the motor isn't on the robot yet */
     public DcMotorEx optionalMotor(String name) {
         DcMotorEx m = hw.orStub(DcMotorEx.class, name);
-        return Hw.isStub(m) ? m : setup(m, MotorConfig.direction(name));
+        return Hw.isStub(m) ? m : setup(m, ConfigUtil.direction(name));
     }
 
     private static DcMotorEx setup(DcMotorEx m, Direction direction) {

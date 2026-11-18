@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.teleop.tuning;
 
+import org.firstinspires.ftc.teamcode.util.ConfigUtil;
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
@@ -9,7 +10,6 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
-import org.firstinspires.ftc.teamcode.RobotConfig.MotorConfig;
 import org.firstinspires.ftc.teamcode.RobotConfig.Names;
 import org.firstinspires.ftc.teamcode.RobotConfig.ShooterConfig;
 import org.firstinspires.ftc.teamcode.util.control.Voltage;
@@ -46,7 +46,7 @@ public class SVATuner extends LinearOpMode {
     public void runOpMode() {
         hubs = hardwareMap.getAll(LynxModule.class);
         for (LynxModule h : hubs) h.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
-        flywheel = MotorGroup.of(hardwareMap, Names.FLYWHEEL, MotorConfig.flywheel());
+        flywheel = MotorGroup.of(hardwareMap, Names.FLYWHEEL, ConfigUtil.flywheelDirections());
         flywheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         flywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         battery = hardwareMap.voltageSensor.iterator().next();
@@ -108,7 +108,7 @@ public class SVATuner extends LinearOpMode {
             double p = power.at(t);
             flywheel.setPower(p);
             double volts = battery.getVoltage();
-            double rpm = ShooterConfig.flywheelRpm(flywheel.getVelocity());
+            double rpm = ConfigUtil.flywheelRpm(flywheel.getVelocity());
             out.add(t, p, volts, rpm);
             show(phase, t, p, volts, rpm, out.size());
         }
@@ -122,7 +122,7 @@ public class SVATuner extends LinearOpMode {
             if (gamepad1.b) return false;
             double t = (System.nanoTime() - start) / 1e9;
             for (LynxModule h : hubs) h.clearBulkCache();
-            double rpm = ShooterConfig.flywheelRpm(flywheel.getVelocity());
+            double rpm = ConfigUtil.flywheelRpm(flywheel.getVelocity());
             if (Math.abs(rpm) < MIN_RPM / 3 || t > COAST_MAX_S) return true;
             show("coast", t, 0, battery.getVoltage(), rpm, 0);
         }
@@ -132,7 +132,7 @@ public class SVATuner extends LinearOpMode {
     private void show(String phase, double t, double p, double volts, double rpm, int n) {
         telemetry.addData("phase", "%s  %.1fs", phase, t);
         telemetry.addData("power", "%.2f  (%.2f nominal)", p, Voltage.toNominal(p, volts));
-        telemetry.addData("rpm", "%.0f  (spread %.0f)", rpm, ShooterConfig.flywheelRpm(flywheel.velocitySpread()));
+        telemetry.addData("rpm", "%.0f  (spread %.0f)", rpm, ConfigUtil.flywheelRpm(flywheel.velocitySpread()));
         telemetry.addData("battery", "%.2f V", volts);
         telemetry.addData("samples", n);
         telemetry.update();

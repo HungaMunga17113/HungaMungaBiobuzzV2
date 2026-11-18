@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.teleop.testing;
 
+import org.firstinspires.ftc.teamcode.util.ConfigUtil;
 import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -76,7 +77,7 @@ public class DtTester extends LinearOpMode {
     private DcMotorEx motor(String name) {
         DcMotorEx m = hardwareMap.tryGet(DcMotorEx.class, name);
         if (m == null) return null;
-        m.setDirection(MotorConfig.direction(name));
+        m.setDirection(ConfigUtil.direction(name));
         m.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         m.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         return m;

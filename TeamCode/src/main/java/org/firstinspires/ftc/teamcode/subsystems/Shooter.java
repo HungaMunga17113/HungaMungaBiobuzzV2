@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
+import org.firstinspires.ftc.teamcode.util.ConfigUtil;
 import static com.pedropathing.ivy.commands.Commands.instant;
 import static com.pedropathing.ivy.commands.Commands.waitUntil;
 
@@ -67,7 +68,7 @@ public final class Shooter implements Subsystem {
 
     @Override
     public void periodic() {
-        rpm = ShooterConfig.flywheelRpm(flywheel.getVelocity());
+        rpm = ConfigUtil.flywheelRpm(flywheel.getVelocity());
         if (!on()) {
             power = 0;
         } else {
