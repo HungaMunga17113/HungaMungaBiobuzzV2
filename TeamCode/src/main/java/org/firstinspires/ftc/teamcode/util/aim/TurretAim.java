@@ -32,9 +32,13 @@ public final class TurretAim {
         this.tof = tof;
     }
 
-    public static TurretAim fromConfig() {
-        return new TurretAim(TurretConfig.MIN_DEG, TurretConfig.MAX_DEG,
-                TurretConfig.OFFSET_FORWARD, TurretConfig.OFFSET_LEFT, Alliance.selected.driverForward, ShotTable.fromConfig()::tof);
+    private static final TurretAim[] config = new TurretAim[Alliance.values().length];
+
+    /** TurretConfig + ShotTable, built once per alliance */
+    public static TurretAim fromConfig(Alliance a) {
+        if (config[a.ordinal()] == null) config[a.ordinal()] = new TurretAim(TurretConfig.MIN_DEG, TurretConfig.MAX_DEG,
+                TurretConfig.OFFSET_FORWARD, TurretConfig.OFFSET_LEFT, a.driverForward, ShotTable.fromConfig()::tof);
+        return config[a.ordinal()];
     }
 
     public static final class Solution {

@@ -10,6 +10,7 @@ import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.RobotConfig.TurretConfig;
+import org.firstinspires.ftc.teamcode.game.Alliance;
 import org.firstinspires.ftc.teamcode.util.aim.TurretAim;
 import org.firstinspires.ftc.teamcode.util.control.PIDControllerEx;
 
@@ -40,12 +41,12 @@ public final class Turret implements Subsystem {
     public void setAngle(double rad) {
         last = null;
         omega = 0;
-        commandedRad = TurretAim.fromConfig().clamp(rad);
+        commandedRad = TurretAim.fromConfig(Alliance.RED).clamp(rad);
     }
 
     /** points at (tx, ty) from the robot's pose, call every loop to keep tracking */
     public TurretAim.Solution aimAt(Pose pose, Velocity fieldVelocity, double tx, double ty) {
-        last = TurretAim.fromConfig().solve(pose.x(), pose.y(), pose.heading(), fieldVelocity.vx, fieldVelocity.vy, tx, ty, commandedRad);
+        last = TurretAim.fromConfig(Alliance.selected).solve(pose.x(), pose.y(), pose.heading(), fieldVelocity.vx, fieldVelocity.vy, tx, ty, commandedRad);
         omega = fieldVelocity.omega;
         commandedRad = last.turretRad;
         return last;
