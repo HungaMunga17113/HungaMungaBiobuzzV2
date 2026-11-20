@@ -371,7 +371,14 @@ robotTask('pullConfig', 'pull the robot configuration from the rc and write it i
             mainClass = 'org.firstinspires.ftc.teamcode.util.hardware.ConfigImporter'
             args = [xml.path, configName, indent, javaOut.path] + customDeviceTypes()
         }
-        javaOut.getText('UTF-8')
+        def names = [:]
+        (src =~ /public static final String (\w+) = "([^"]+)";/).each { all, k, v -> names[v] = k }
+        (src =~ /String\[\] (\w+) = \{([^}]*)\}/).each { all, k, vs ->
+            (vs =~ /"([^"]+)"/).collect { it[1] }.eachWithIndex { v, i -> names[v] = "${k}[${i}]" }
+        }
+        javaOut.getText('UTF-8').replaceAll(/(\.(?:motor|servo|crServo|analog|digital|pwm|i2c|device)\(\d+, )"([^"]+)"/) { all, pre, n ->
+            names[n] ? "${pre}Names.${names[n]}" : all
+        }
     }
     def imp = 'import static org.firstinspires.ftc.teamcode.util.hardware.HardwareConfig.Type.*;'
     if (!updated.contains(imp)) updated = updated.replaceFirst(/(package [^;]+;\s*\n)/, "\$1\n$imp\n")
