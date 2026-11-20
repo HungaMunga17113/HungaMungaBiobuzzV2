@@ -11,6 +11,6 @@ public enum Alliance {
         this.driverForward = driverForward;
     }
 
-    /** picked during init */
-    public static Alliance selected = BLUE;
+    /** last auto state, teleop takes it once */
+    public static Alliance autoEnd;
 }

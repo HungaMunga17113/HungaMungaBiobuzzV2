@@ -11,10 +11,10 @@ import com.qualcomm.robotcore.util.Range;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.RobotConfig.TurretConfig;
 import org.firstinspires.ftc.teamcode.game.Alliance;
+import org.firstinspires.ftc.teamcode.game.Hive;
 import org.firstinspires.ftc.teamcode.util.aim.TurretAim;
 import org.firstinspires.ftc.teamcode.util.control.PIDControllerEx;
 
-import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 
 /**
@@ -44,9 +44,10 @@ public final class Turret implements Subsystem {
         commandedRad = TurretAim.fromConfig(Alliance.RED).clamp(rad);
     }
 
-    /** points at (tx, ty) from the robot's pose, call every loop to keep tracking */
-    public TurretAim.Solution aimAt(Pose pose, Velocity fieldVelocity, double tx, double ty) {
-        last = TurretAim.fromConfig(Alliance.selected).solve(pose.x(), pose.y(), pose.heading(), fieldVelocity.vx, fieldVelocity.vy, tx, ty, commandedRad);
+    /** points at the hive's up cell from the robot's pose, call every loop to keep tracking */
+    public TurretAim.Solution aimAt(Pose pose, Velocity fieldVelocity, Hive hive) {
+        last = TurretAim.fromConfig(hive.alliance()).solve(pose.x(), pose.y(), pose.heading(),
+                fieldVelocity.vx, fieldVelocity.vy, hive.targetX(), hive.targetY(), commandedRad);
         omega = fieldVelocity.omega;
         commandedRad = last.turretRad;
         return last;
@@ -133,10 +134,10 @@ public final class Turret implements Subsystem {
 
     // ivy commands, for auto
 
-    /** keeps pointing at (tx, ty) from the robot's pose, until interrupted */
-    public Command track(Supplier<Pose> pose, Supplier<Velocity> fieldVelocity, DoubleSupplier tx, DoubleSupplier ty) {
+    /** keeps pointing at the hive's up cell from the robot's pose, until interrupted */
+    public Command track(Supplier<Pose> pose, Supplier<Velocity> fieldVelocity, Hive hive) {
         return Command.build()
-                .setExecute(() -> aimAt(pose.get(), fieldVelocity.get(), tx.getAsDouble(), ty.getAsDouble()))
+                .setExecute(() -> aimAt(pose.get(), fieldVelocity.get(), hive))
                 .setEnd(e -> {
                     last = null;
                     omega = 0;

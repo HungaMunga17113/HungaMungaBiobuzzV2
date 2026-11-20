@@ -159,7 +159,7 @@ public abstract class Far2Tip extends LinearOpMode {
     public void runOpMode() {
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         Scheduler.reset();
-        Alliance.selected = alliance();
+        Alliance.autoEnd = alliance();
         hive = new Hive(alliance());
 
         robot = new RobotHardware(hardwareMap);
@@ -188,7 +188,7 @@ public abstract class Far2Tip extends LinearOpMode {
         if (isStopRequested()) return;
 
         drive.relocalize(start);
-        if (!RobotConfig.STATIC_AIM) schedule(turret.track(drive::pose, () -> drive.follower().velocity(), hive::targetX, hive::targetY));
+        if (!RobotConfig.STATIC_AIM) schedule(turret.track(drive::pose, () -> drive.follower().velocity(), hive));
         clock.reset();
         schedule(sequential(
                 race(autoRoutine(), sequential(waitUntil(() -> clock.seconds() >= AutoConfig.PARK_AT_S), instant(() -> rushed = true))),

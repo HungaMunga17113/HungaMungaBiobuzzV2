@@ -30,6 +30,10 @@ public final class Hive {
         tips++;
     }
 
+    public Alliance alliance() {
+        return alliance;
+    }
+
     public Cell up() {
         return up;
     }

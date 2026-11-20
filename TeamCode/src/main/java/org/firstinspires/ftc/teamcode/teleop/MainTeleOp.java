@@ -72,6 +72,7 @@ public class MainTeleOp extends OpMode {
         telemetry.setDisplayFormat(Telemetry.DisplayFormat.HTML);
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         robot = new RobotHardware(hardwareMap);
+        alliance = Alliance.autoEnd != null ? Alliance.autoEnd : Alliance.BLUE;
         hiveUp = Hive.autoEndUp;
         Hive.autoEndUp = null;
         drive = new Drivetrain(robot.follower());
@@ -92,20 +93,19 @@ public class MainTeleOp extends OpMode {
     public void init_loop() {
         robot.update();
 
-        if (gamepad1.x || gamepad2.x) Alliance.selected = Alliance.BLUE;
-        if (gamepad1.b || gamepad2.b) Alliance.selected = Alliance.RED;
+        if (gamepad1.x || gamepad2.x) alliance = Alliance.BLUE;
+        if (gamepad1.b || gamepad2.b) alliance = Alliance.RED;
         if (gamepad2.dpadUpWasPressed()) hiveUp = Hive.Cell.HIGH;
         if (gamepad2.dpadDownWasPressed()) hiveUp = Hive.Cell.LOW;
-        hiveLine(hiveUp != null ? hiveUp : Field.startUp(Alliance.selected));
+        hiveLine(hiveUp != null ? hiveUp : Field.startUp(alliance));
 
-        telemetry.addLine("ALLIANCE: " + Alliance.selected + "   (x = blue, b = red)");
+        telemetry.addLine("ALLIANCE: " + alliance + "   (x = blue, b = red)");
         telemetry.addLine("square into corner + dpad down (gp1) to localize");
         robot.addInitWarnings(telemetry);
     }
 
     @Override
     public void start() {
-        alliance = Alliance.selected;
         hive = new Hive(alliance, hiveUp != null ? hiveUp : Field.startUp(alliance));
         resetRuntime();
 
@@ -154,7 +154,7 @@ public class MainTeleOp extends OpMode {
         if (gamepad2.yWasPressed()) autoAim = !autoAim;
         boolean tracking = autoAim && localized && !RobotConfig.STATIC_AIM;
         TurretAim.Solution aim = tracking
-                ? turret.aimAt(drive.pose(), drive.follower().velocity(), hive.targetX(), hive.targetY())
+                ? turret.aimAt(drive.pose(), drive.follower().velocity(), hive)
                 : null;
         if (!tracking) turret.setAngle(0);
         shooter.setTarget(shooterOn ? Shooter.rpmFor(aim) : 0);
