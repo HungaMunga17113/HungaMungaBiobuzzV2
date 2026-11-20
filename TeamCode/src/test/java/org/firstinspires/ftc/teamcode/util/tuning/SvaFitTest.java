@@ -52,13 +52,6 @@ public class SvaFitTest {
         for (double a : SvaFit.accel(t, x, 0.05)) assertEquals(250, a, 1e-6);
     }
 
-    @Test
-    public void sdkFMatchesTheHubConvention() {
-        // kV = 1 / max rpm -> f = 32767 / max tps
-        double maxRpm = 6000, tpr = 28;
-        assertEquals(32767 / (maxRpm * tpr / 60), SvaFit.sdkF(1 / maxRpm, tpr, 1), 1e-9);
-    }
-
     @Test(expected = IllegalArgumentException.class)
     public void refusesEmptyData() {
         SvaFit.fit(new SvaFit.Samples(), new SvaFit.Samples(), 100, 0.05);

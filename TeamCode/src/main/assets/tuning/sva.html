@@ -104,10 +104,9 @@ let run = null;
 function render() {
   const r = run.results, nom = run.nominal;
   document.querySelectorAll('.nom').forEach(e => e.textContent = nom);
-  const gains = [['kS', fmt(r.kS, 3)], ['kV', fmt(r.kV, 3)], ['kA', fmt(r.kA, 3)], ['r²', r.r2.toFixed(4)],
-    ['sdk F (approx)', r.sdkF.toFixed(2)], ['samples used', r.used]];
+  const gains = [['kS', fmt(r.kS, 3)], ['kV', fmt(r.kV, 3)], ['kA', fmt(r.kA, 3)], ['r²', r.r2.toFixed(4)], ['samples used', r.used]];
   $('gains').innerHTML = gains.map(([k, v]) => `<div class="gain"><b>${k}</b><span>${v}</span></div>`).join('');
-  $('code').textContent = `public static double kS = ${r.kS}, kV = ${r.kV}, kA = ${r.kA};\npublic static double sdkF = ${r.sdkF.toFixed(3)};`;
+  $('code').textContent = `public static double kS = ${r.kS}, kV = ${r.kV}, kA = ${r.kA};`;
 
   const pn = s => s.p.map((p, i) => p * s.volts[i] / nom);
   const keep = run.ramp.rpm.map(v => Math.abs(v) >= run.minRpm);

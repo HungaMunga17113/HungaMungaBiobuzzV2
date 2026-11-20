@@ -128,9 +128,4 @@ public final class SvaFit {
         }
         return new double[]{a[0][3] / a[0][0], a[1][3] / a[1][1], a[2][3] / a[2][2]};
     }
-
-    /** hub velocity f for the sdk pidf (32767 = full power), from kV per flywheel rpm */
-    public static double sdkF(double kV, double ticksPerRev, double gearRatio) {
-        return 32767 * kV * 60 * gearRatio / ticksPerRev;
-    }
 }

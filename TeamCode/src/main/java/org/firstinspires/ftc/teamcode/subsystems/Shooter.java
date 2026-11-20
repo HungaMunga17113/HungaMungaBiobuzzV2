@@ -81,7 +81,6 @@ public final class Shooter implements Subsystem {
             power = 0;
         } else {
             controller.setPID(ShooterConfig.kP, ShooterConfig.kI, ShooterConfig.kD);
-            controller.setF(ShooterConfig.kF);
             controller.setSVA(ShooterConfig.kS, ShooterConfig.kV, ShooterConfig.kA);
             double v = volts.getAsDouble();
             boolean comp = ShooterConfig.voltageComp && !Double.isNaN(v);

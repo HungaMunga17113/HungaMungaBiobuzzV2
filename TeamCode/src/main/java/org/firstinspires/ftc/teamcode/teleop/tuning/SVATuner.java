@@ -85,7 +85,6 @@ public class SVATuner extends LinearOpMode {
                 telemetry.addData("kV", "%.4e", r.kV);
                 telemetry.addData("kA", "%.4e", r.kA);
                 telemetry.addData("r²", "%.4f  (%d samples)", r.r2, r.used);
-                telemetry.addData("sdk f (approx)", "%.2f", SvaFit.sdkF(r.kV, ShooterConfig.TICKS_PER_REV, ShooterConfig.GEAR_RATIO));
                 telemetry.addLine("copied into ShooterConfig until the rc restarts, paste them into RobotConfig");
             }
             telemetry.addLine("plots: " + URL);
@@ -150,8 +149,8 @@ public class SVATuner extends LinearOpMode {
                 .append(",\"gearRatio\":").append(ShooterConfig.GEAR_RATIO)
                 .append(",\"minRpm\":").append(MIN_RPM)
                 .append(",\"results\":{")
-                .append(String.format(Locale.US, "\"kS\":%.8g,\"kV\":%.8g,\"kA\":%.8g,\"r2\":%.6f,\"used\":%d,\"sdkF\":%.6g",
-                        r.kS, r.kV, r.kA, r.r2, r.used, SvaFit.sdkF(r.kV, ShooterConfig.TICKS_PER_REV, ShooterConfig.GEAR_RATIO)))
+                .append(String.format(Locale.US, "\"kS\":%.8g,\"kV\":%.8g,\"kA\":%.8g,\"r2\":%.6f,\"used\":%d",
+                        r.kS, r.kV, r.kA, r.r2, r.used))
                 .append("},\"ramp\":");
         samples(sb, ramp);
         sb.append(",\"step\":");

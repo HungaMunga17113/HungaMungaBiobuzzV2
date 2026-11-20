@@ -94,11 +94,8 @@ public class RobotConfig {
         public static boolean voltageComp = true;
 
         // ex controller: power at Voltage.NOMINAL, per flywheel rpm
-        public static double kP = 0.0005, kI = 0, kD = 0, kF = 0;
+        public static double kP = 0.0005, kI = 0, kD = 0;
         public static double kS = 0.05, kV = 1.0 / 6000, kA = 0; // untuned seed, run SVATuner + paste here
-
-        // sdk hub velocity pidf, hub units
-        public static double sdkP = 5, sdkI = 3, sdkD = 0, sdkF = 12;
 
         public static double READY_TOLERANCE_RPM = 150; // atSpeed() band
         public static double READY_SETTLE_MS = 100; // in band this long
