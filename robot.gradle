@@ -301,7 +301,7 @@ tasks.named('pushConfig') { dependsOn generateConfig }
 // the HardwareConfig classes on their own, so pull works even if the rest of TeamCode doesn't compile
 def hardwareToolDir = layout.buildDirectory.dir('hardware-config-tool')
 def compileHardwareTool = tasks.register('compileHardwareConfigTool', JavaCompile) {
-    source = fileTree('src/main/java/org/firstinspires/ftc/teamcode/util/hardware') { include '*.java' }
+    source = fileTree('src/main/java/org/firstinspires/ftc/teamcode/util/hardware') { include 'HardwareConfig.java', 'ConfigImporter.java', 'ConfigWriter.java' }
     classpath = files()
     destinationDirectory = hardwareToolDir
     sourceCompatibility = '1.8'
