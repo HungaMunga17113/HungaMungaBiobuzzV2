@@ -81,7 +81,7 @@ public class RobotConfig {
         public static boolean useFieldCentric = true;
         public static Curve DRIVE_CURVE = Curve.EXPONENTIAL; // linear, cubic_bezier, smoothstep, exponential, quintic, (ALL CAPS)
         public static CurveParams CURVE_PARAMS = new CurveParams();
-        public static double AIM_TURN_SCALE = 0.2;
+        public static double SLOW_SCALE = 0.2;
         public static double STICK_DB = 0.03;
         public static double TURN_SPEED = 0.8; // max rot power (after the curve)
     }

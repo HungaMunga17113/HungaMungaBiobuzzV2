@@ -192,7 +192,7 @@ public class MainTeleOp extends OpMode {
     /** deadband, then the slow scale or the curve (times scale) */
     private static double shape(double input, boolean slow, double scale) {
         double v = MecanumMath.deadband(input, DrivetrainConfig.STICK_DB);
-        return slow ? DrivetrainConfig.AIM_TURN_SCALE * v : scale * DrivetrainConfig.DRIVE_CURVE.apply(v, DrivetrainConfig.CURVE_PARAMS);
+        return slow ? DrivetrainConfig.SLOW_SCALE * v : scale * DrivetrainConfig.DRIVE_CURVE.apply(v, DrivetrainConfig.CURVE_PARAMS);
     }
 
     /// helpers
