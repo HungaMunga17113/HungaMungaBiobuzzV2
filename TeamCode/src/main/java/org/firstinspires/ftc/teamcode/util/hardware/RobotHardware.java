@@ -44,7 +44,6 @@ public final class RobotHardware {
     public final HardwareMap hardwareMap;
     public final Hw hw;
     private final List<LynxModule> hubs;
-    private final List<String> drift = ConfigUtil.drift();
     private final VoltageSensor battery;
     private PinpointLocalizer pinpoint;
     private GoBildaPinpointDriver pinpointDevice;
@@ -78,10 +77,9 @@ public final class RobotHardware {
         return voltage;
     }
 
-    /** missing optional devices + RobotConfig drift, for the init screen */
+    /** missing optional devices, for the init screen */
     public void addInitWarnings(Telemetry telemetry) {
         for (String name : hw.missing()) telemetry.addLine("missing: " + name + " (stubbed)");
-        for (String d : drift) telemetry.addLine("RobotConfig: " + d);
         if (pinpointDevice != null) telemetry.addData("pinpoint", pinpointDevice.getDeviceStatus());
     }
 
