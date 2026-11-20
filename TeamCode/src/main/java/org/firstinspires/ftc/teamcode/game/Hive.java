@@ -9,13 +9,20 @@ public final class Hive {
         }
     }
 
+    /** last auto state, teleop takes it once */
+    public static Cell autoEndUp;
+
     private final Alliance alliance;
     private Cell up;
     private int tips;
 
     public Hive(Alliance alliance) {
+        this(alliance, Field.startUp(alliance));
+    }
+
+    public Hive(Alliance alliance, Cell up) {
         this.alliance = alliance;
-        this.up = Field.startUp(alliance);
+        this.up = up;
     }
 
     public void tipped() {

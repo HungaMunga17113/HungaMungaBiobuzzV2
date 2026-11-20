@@ -2,6 +2,8 @@ package org.firstinspires.ftc.teamcode.util.hardware;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
+import org.firstinspires.ftc.teamcode.RobotConfig;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
@@ -19,6 +21,7 @@ public final class Hw {
 
     public <T> T get(Class<T> cls, String name) {
         T d = map.tryGet(cls, name);
+        if (d == null && RobotConfig.COMPETITION) throw new IllegalStateException("missing " + name + " (RobotConfig.COMPETITION)");
         if (d == null) {
             throw new IllegalArgumentException("no " + cls.getSimpleName() + " named \"" + name
                     + "\" in the active config (push + activate on the ds?)");
@@ -29,6 +32,7 @@ public final class Hw {
     /** null if missing */
     public <T> T optional(Class<T> cls, String name) {
         T d = map.tryGet(cls, name);
+        if (d == null && RobotConfig.COMPETITION) throw new IllegalStateException("missing " + name + " (RobotConfig.COMPETITION)");
         if (d == null && !missing.contains(name)) missing.add(name);
         return d;
     }

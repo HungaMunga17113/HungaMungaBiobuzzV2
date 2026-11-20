@@ -7,6 +7,9 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 
+import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.RobotConfig;
+import org.firstinspires.ftc.teamcode.RobotConfig;
 import org.firstinspires.ftc.teamcode.RobotConfig.*;
 import org.firstinspires.ftc.teamcode.subsystems.*;
 
@@ -22,7 +25,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * init_loop: x = BLUE, b = RED on either gp
+ * init_loop: x = BLUE, b = RED on either gp, gp2 d_up / d_down = high / low cell up
  *
  * gp1 (drive)
  *   sticks         drive, btns = slow
@@ -31,7 +34,7 @@ import java.util.List;
  *   d_down         relocalize: robot squared into our corner (Field.corner), enables auto-aim
  *   left t+b       intake in / out
  *   r trigger      shooter on / off
- *   r bumper       shoot one ball (waits for the flywheel to be at speed)
+ *   r bumper       shoot one ball once at speed, release cancels
  *   y              flower mech toggle
  *
  * gp2 (operator)
@@ -52,6 +55,13 @@ public class MainTeleOp extends OpMode {
 
     private Alliance alliance;
     private Hive hive;
+    private Hive.Cell hiveUp;
+
+
+    // comp(only) reminders
+    private static final double[] RUMBLE_S = {60, 100}; // 1:00 + 0:20 left
+    private int rumbles;
+
 
     private boolean fieldCentric = DrivetrainConfig.useFieldCentric;
     private double pendingHeading = Double.NaN;
@@ -59,8 +69,11 @@ public class MainTeleOp extends OpMode {
 
     @Override
     public void init() {
+        telemetry.setDisplayFormat(Telemetry.DisplayFormat.HTML);
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         robot = new RobotHardware(hardwareMap);
+        hiveUp = Hive.autoEndUp;
+        Hive.autoEndUp = null;
         drive = new Drivetrain(robot.follower());
         intake = robot.intake();
         transfer = new Transfer(robot.optionalServo(Names.TRANSFER));
@@ -81,6 +94,9 @@ public class MainTeleOp extends OpMode {
 
         if (gamepad1.x || gamepad2.x) Alliance.selected = Alliance.BLUE;
         if (gamepad1.b || gamepad2.b) Alliance.selected = Alliance.RED;
+        if (gamepad2.dpadUpWasPressed()) hiveUp = Hive.Cell.HIGH;
+        if (gamepad2.dpadDownWasPressed()) hiveUp = Hive.Cell.LOW;
+        hiveLine(hiveUp != null ? hiveUp : Field.startUp(Alliance.selected));
 
         telemetry.addLine("ALLIANCE: " + Alliance.selected + "   (x = blue, b = red)");
         telemetry.addLine("square into corner + dpad down (gp1) to localize");
@@ -90,7 +106,8 @@ public class MainTeleOp extends OpMode {
     @Override
     public void start() {
         alliance = Alliance.selected;
-        hive = new Hive(alliance);
+        hive = new Hive(alliance, hiveUp != null ? hiveUp : Field.startUp(alliance));
+        resetRuntime();
 
         flower.feed(false);
         transfer.set(TransferConfig.REST_POS);
@@ -135,7 +152,7 @@ public class MainTeleOp extends OpMode {
 
         // gp2
         if (gamepad2.yWasPressed()) autoAim = !autoAim;
-        boolean tracking = autoAim && localized;
+        boolean tracking = autoAim && localized && !RobotConfig.STATIC_AIM;
         TurretAim.Solution aim = tracking
                 ? turret.aimAt(drive.pose(), drive.follower().velocity(), hive.targetX(), hive.targetY())
                 : null;
@@ -147,13 +164,19 @@ public class MainTeleOp extends OpMode {
             hive.tipped();
             gamepad2.rumble(200);
         }
+        if (rumbles < RUMBLE_S.length && getRuntime() >= RUMBLE_S[rumbles] && RobotConfig.COMPETITION) {
+            gamepad1.rumbleBlips(3);
+            gamepad2.rumbleBlips(3);
+            rumbles++;
+        }
 
         for (Subsystem s : subsystems) s.periodic();
+        hiveLine(hive.up());
         telemetry.addData("alliance", alliance);
         telemetry.addData("drive", (fieldCentric ? "FIELD" : "ROBOT") + (robot.pinpointStale() ? "  !! PINPOINT LOST" : ""));
         telemetry.addData("localized", localized ? "yes" : "NO - square into corner, gp1 dpad down");
         telemetry.addData("hive", "%s cell up, %d tips called", hive.up(), hive.tips());
-        telemetry.addData("auto-aim", autoAim ? (tracking ? "tracking" : "waiting for localize") : "off");
+        telemetry.addData("auto-aim", RobotConfig.STATIC_AIM ? "STATIC_AIM (forward, fixed rpm)" : autoAim ? (tracking ? "tracking" : "waiting for localize") : "off");
 
         for (Subsystem s : subsystems) s.telemetry(telemetry);
         Pose p = drive.pose();
@@ -178,8 +201,8 @@ public class MainTeleOp extends OpMode {
         if (gamepad1.rightTriggerWasPressed()) shooterOn = !shooterOn;
 
         // one ball, fires once the flywheel is at speed
-        if (gamepad1.right_bumper && shooterOn) shotQueued = true;
-        if (!shooterOn) shotQueued = false;
+        if (gamepad1.rightBumperWasPressed()) shotQueued = true;
+        if (!gamepad1.right_bumper || !shooterOn) shotQueued = false;
 
         if (shotQueued && shooter.atSpeed() && !transfer.isFeeding()) {
             transfer.startFeed();
@@ -192,6 +215,10 @@ public class MainTeleOp extends OpMode {
                 : (gamepad1.left_bumper) ? IntakeConfig.OUT_POWER : 0);
     }
     private void handleFlower() { if (gamepad1.yWasPressed()) flower.toggle(); }
+
+    private void hiveLine(Hive.Cell up) {
+        telemetry.addLine("<h2>HIVE: " + up + " CELL UP</h2>");
+    }
 
     /** heading relative to "away from our drivers", NaN = robot-centric */
     private double driverHeading() {

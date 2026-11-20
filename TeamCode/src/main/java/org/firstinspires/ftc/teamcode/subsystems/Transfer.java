@@ -25,7 +25,7 @@ public final class Transfer implements Subsystem {
         servo.setPosition(pos);
     }
 
-    /** kicks one ball, periodic() brings it back to rest after FEED_MS */
+    /** kicks one ball, back to rest after FEED_MS, done after RETURN_MS more */
     public void startFeed() {
         set(TransferConfig.FEED_POS);
         feeding = true;
@@ -38,10 +38,9 @@ public final class Transfer implements Subsystem {
 
     @Override
     public void periodic() {
-        if (feeding && feedTimer.milliseconds() >= TransferConfig.FEED_MS) {
-            set(TransferConfig.REST_POS);
-            feeding = false;
-        }
+        if (!feeding) return;
+        if (feedTimer.milliseconds() >= TransferConfig.FEED_MS) set(TransferConfig.REST_POS);
+        if (feedTimer.milliseconds() >= TransferConfig.FEED_MS + TransferConfig.RETURN_MS) feeding = false;
     }
 
     // ivy commands, for auto

@@ -6,6 +6,7 @@ import static com.pedropathing.ivy.commands.Commands.waitUntil;
 
 import com.pedropathing.ivy.Command;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.RobotConfig.ShooterConfig;
@@ -22,7 +23,8 @@ public final class Shooter implements Subsystem {
     private final MotorGroup flywheel;
     private final DoubleSupplier volts;
     private final PIDFControllerEx controller = new PIDFControllerEx(0, 0, 0);
-    private double targetRpm, rpm, power, sentPower = Double.NaN;
+    private final ElapsedTime inBand = new ElapsedTime();
+    private double targetRpm, rpm, spread, power, sentPower = Double.NaN;
 
     public Shooter(MotorGroup flywheel, DoubleSupplier volts) {
         this.flywheel = flywheel;
@@ -51,6 +53,10 @@ public final class Shooter implements Subsystem {
     }
 
     public boolean atSpeed() {
+        return inBand() && inBand.milliseconds() >= ShooterConfig.READY_SETTLE_MS;
+    }
+
+    private boolean inBand() {
         return on() && Math.abs(targetRpm - rpm) <= ShooterConfig.READY_TOLERANCE_RPM;
     }
 
@@ -69,6 +75,8 @@ public final class Shooter implements Subsystem {
     @Override
     public void periodic() {
         rpm = ConfigUtil.flywheelRpm(flywheel.getVelocity());
+        spread = ConfigUtil.flywheelRpm(flywheel.velocitySpread());
+        if (!inBand()) inBand.reset();
         if (!on()) {
             power = 0;
         } else {
@@ -89,6 +97,7 @@ public final class Shooter implements Subsystem {
 
     @Override
     public void telemetry(Telemetry t) {
-        t.addData("shooter", "%s %.0f / %.0f rpm  %.2f pwr", atSpeed() ? "READY" : on() ? "spinning" : "off", rpm, targetRpm, power);
+        t.addData("shooter", "%s %.0f / %.0f rpm  %.2f pwr  spread %.0f%s", atSpeed() ? "READY" : on() ? "spinning" : "off",
+                rpm, targetRpm, power, spread, spread > ShooterConfig.READY_TOLERANCE_RPM ? "  CHECK ENCODERS" : "");
     }
 }

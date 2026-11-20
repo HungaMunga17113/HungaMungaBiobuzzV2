@@ -15,7 +15,7 @@ public final class Field {
     /** hive pivots: each hive sits on its own drivers' side, red drivers at x = 0 */
     public static double RED_HIVE_X = 58.7;
     public static double BLUE_HIVE_X = 85.3;
-    /** each hive tips along y, so its two cell openings sit at these y's (manual: ~18.8 in apart at the pivot) */
+    /** each hive tips along y, so its two cell openings sit at these y's */
     public static double CELL_LOW_Y = 59;
     public static double CELL_HIGH_Y = 85;
 

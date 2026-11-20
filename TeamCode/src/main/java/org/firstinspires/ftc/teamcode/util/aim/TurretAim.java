@@ -59,6 +59,11 @@ public final class TurretAim {
 
     /** robot pose + field vel (in/s, pass 0s for no lead) -> turret angle for target (tx, ty) */
     public Solution solve(double x, double y, double heading, double vx, double vy, double tx, double ty) {
+        return solve(x, y, heading, vx, vy, tx, ty, Double.NaN);
+    }
+
+    /** prevRad = last command, out of range it holds that limit instead of whipping around */
+    public Solution solve(double x, double y, double heading, double vx, double vy, double tx, double ty, double prevRad) {
         double cos = Math.cos(heading), sin = Math.sin(heading);
         double px = x + offsetForward * cos - offsetLeft * sin;
         double py = y + offsetForward * sin + offsetLeft * cos;
@@ -72,7 +77,7 @@ public final class TurretAim {
         }
 
         double wanted = wrap(Math.atan2(dy, dx) - heading);
-        return new Solution(clamp(wanted), wanted, Math.hypot(dx, dy), shotAngleDeg(dx, dy), t);
+        return new Solution(clamp(wanted, prevRad), wanted, Math.hypot(dx, dy), shotAngleDeg(dx, dy), t);
     }
 
     /** pivot->target (dx, dy) -> goal->pivot bearing relative to refRad, deg */
@@ -81,8 +86,14 @@ public final class TurretAim {
     }
 
     public double clamp(double rad) {
+        return clamp(rad, Double.NaN);
+    }
+
+    public double clamp(double rad, double prevRad) {
         rad = wrap(rad);
         if (rad >= minRad && rad <= maxRad) return rad;
+        if (prevRad >= maxRad) return maxRad;
+        if (prevRad <= minRad) return minRad;
         double pastMax = Math.abs(wrap(rad - maxRad)), pastMin = Math.abs(wrap(minRad - rad));
         return pastMax <= pastMin ? maxRad : minRad;
     }

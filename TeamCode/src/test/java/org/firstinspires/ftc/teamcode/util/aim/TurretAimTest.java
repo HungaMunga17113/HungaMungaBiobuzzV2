@@ -60,6 +60,15 @@ public class TurretAimTest {
     }
 
     @Test
+    public void holdsItsLimitBehindTheRobot() {
+        TurretAim a = new TurretAim(-150, 150, 0, 0, 0);
+        assertEquals(deg(150), a.clamp(deg(-155), deg(150)), 1e-6);
+        assertEquals(deg(-150), a.clamp(deg(155), deg(-150)), 1e-6);
+        assertEquals(deg(-140), a.clamp(deg(-140), deg(150)), 1e-6);
+        assertEquals(deg(-150), a.clamp(deg(-155), deg(100)), 1e-6);
+    }
+
+    @Test
     public void turretOffsetRotatesWithTheRobot() {
         // pivot 5 in behind center; facing +y puts the pivot at (0, -5)
         TurretAim a = new TurretAim(-170, 170, -5, 0, 0);

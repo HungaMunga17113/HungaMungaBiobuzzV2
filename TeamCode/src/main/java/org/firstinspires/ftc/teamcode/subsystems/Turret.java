@@ -26,7 +26,7 @@ public final class Turret implements Subsystem {
     private final AnalogInput encoder;
     private final PIDControllerEx pid = new PIDControllerEx(0, 0, 0);
 
-    private double commandedRad, measuredRad = Double.NaN, volts = Double.NaN;
+    private double commandedRad, omega, measuredRad = Double.NaN, volts = Double.NaN;
     private double shaftRad, prevShaftRaw = Double.NaN;
     private double power, sentPower = Double.NaN, openPower = Double.NaN;
     private TurretAim.Solution last;
@@ -39,12 +39,14 @@ public final class Turret implements Subsystem {
     /** robot frame, 0 = forward, ccw+, clamped to the ROM. stops auto-aim */
     public void setAngle(double rad) {
         last = null;
+        omega = 0;
         commandedRad = TurretAim.fromConfig().clamp(rad);
     }
 
     /** points at (tx, ty) from the robot's pose, call every loop to keep tracking */
     public TurretAim.Solution aimAt(Pose pose, Velocity fieldVelocity, double tx, double ty) {
-        last = TurretAim.fromConfig().solve(pose.x(), pose.y(), pose.heading(), fieldVelocity.vx, fieldVelocity.vy, tx, ty);
+        last = TurretAim.fromConfig().solve(pose.x(), pose.y(), pose.heading(), fieldVelocity.vx, fieldVelocity.vy, tx, ty, commandedRad);
+        omega = fieldVelocity.omega;
         commandedRad = last.turretRad;
         return last;
     }
@@ -68,7 +70,7 @@ public final class Turret implements Subsystem {
     private double control(double deg, double targetDeg) {
         pid.setPID(TurretConfig.kP, TurretConfig.kI, TurretConfig.kD);
         double err = targetDeg - deg;
-        double out = pid.calculate(deg, targetDeg);
+        double out = pid.calculate(deg, targetDeg) - TurretConfig.kW * Math.toDegrees(omega);
         if (Math.abs(err) > TurretConfig.TOLERANCE_DEG) out += TurretConfig.kS * Math.signum(err);
         return limit(deg, Range.clip(out, -1, 1));
     }
@@ -134,7 +136,10 @@ public final class Turret implements Subsystem {
     public Command track(Supplier<Pose> pose, Supplier<Velocity> fieldVelocity, DoubleSupplier tx, DoubleSupplier ty) {
         return Command.build()
                 .setExecute(() -> aimAt(pose.get(), fieldVelocity.get(), tx.getAsDouble(), ty.getAsDouble()))
-                .setEnd(e -> last = null)
+                .setEnd(e -> {
+                    last = null;
+                    omega = 0;
+                })
                 .requiring(this);
     }
 

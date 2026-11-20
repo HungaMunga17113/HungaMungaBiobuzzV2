@@ -1,7 +1,10 @@
 package org.firstinspires.ftc.teamcode.autonomous;
 
 import static com.pedropathing.ivy.Scheduler.schedule;
+import static com.pedropathing.ivy.commands.Commands.conditional;
 import static com.pedropathing.ivy.commands.Commands.instant;
+import static com.pedropathing.ivy.commands.Commands.lazy;
+import static com.pedropathing.ivy.commands.Commands.waitUntil;
 import static com.pedropathing.ivy.commands.Commands.waitMs;
 import static com.pedropathing.ivy.groups.Groups.deadline;
 import static com.pedropathing.ivy.groups.Groups.parallel;
@@ -19,7 +22,9 @@ import com.pedropathing.math.Pose;
 import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.teamcode.RobotConfig;
 import org.firstinspires.ftc.teamcode.RobotConfig.AutoConfig;
 import org.firstinspires.ftc.teamcode.RobotConfig.Names;
 import org.firstinspires.ftc.teamcode.RobotConfig.TransferConfig;
@@ -45,6 +50,9 @@ public abstract class Far2Tip extends LinearOpMode {
     private Flower flower;
     private List<Subsystem> subsystems;
     private Hive hive;
+    private int fired;
+    private boolean rushed;
+    private final ElapsedTime clock = new ElapsedTime();
 
     protected abstract Alliance alliance();
 
@@ -84,8 +92,7 @@ public abstract class Far2Tip extends LinearOpMode {
                         drive.follow(shoot1()),
                         shooter.spinUp(Shooter.rpmFor(null))
                 ),
-                volley(),
-                tip(),
+                tipVolley(0),
 
                 deadline(
                         sequential(drive.follow(intake1()), waitMs(AutoConfig.INTAKE_DWELL_MS), drive.follow(switch1())),
@@ -94,36 +101,50 @@ public abstract class Far2Tip extends LinearOpMode {
 
                 drive.follow(flower1andshoot()),
                 flowerGrab(),
-                volley(),
-                tip(),
+                tipVolley(1),
 
                 drive.follow(switch2()),
                 drive.follow(flower2()),
                 flowerGrab(),
 
                 drive.follow(shoot3()),
-                volley(),
-
-                parallel(
-                        drive.follow(park()),
-                        shooter.stop(),
-                        intake.stop(),
-                        flower.rest()
-                )
+                volley(AutoConfig.VOLLEY_BALLS)
         );
     }
 
-    private Command volley() {
+    private Command parkNow() {
+        return parallel(
+                lazy(() -> {
+                    if (!rushed) return drive.follow(park());
+                    Pose here = drive.pose();
+                    return drive.follow(Paths.line(here, park).linear(here, park));
+                }),
+                shooter.stop(),
+                intake.stop(),
+                flower.rest()
+        );
+    }
+
+    private Command volley(int balls) {
         return race(
                 deadline(
-                        repeat(sequential(turret.waitUntilOnTarget(), shooter.waitUntilReady(), transfer.feed(), intake.shot()), () -> AutoConfig.VOLLEY_BALLS),
+                        repeat(sequential(waitUntil(() -> RobotConfig.STATIC_AIM || turret.onTarget()), shooter.waitUntilReady(), transfer.feed(), intake.shot(), instant(() -> fired++)), balls),
                         intake.in()
                 ),
-                waitMs(AutoConfig.VOLLEY_TIMEOUT_MS)
+                waitMs(AutoConfig.VOLLEY_TIMEOUT_MS * Math.max(1, balls) / AutoConfig.VOLLEY_BALLS)
         );
     }
-    private Command tip() {
-        return instant(() -> hive.tipped());
+
+    /** tip balls, flip only if they all went, pause for the refs, rest at the new cell */
+    private Command tipVolley(int tip) {
+        return sequential(
+                instant(() -> fired = 0),
+                lazy(() -> volley(AutoConfig.TIP_BALLS[tip])),
+                conditional(() -> fired >= AutoConfig.TIP_BALLS[tip],
+                        sequential(instant(hive::tipped), waitMs(AutoConfig.TIP_PAUSE_MS)),
+                        instant(() -> {})),
+                lazy(() -> volley(Math.max(0, AutoConfig.VOLLEY_BALLS - AutoConfig.TIP_BALLS[tip])))
+        );
     }
 
     private Command flowerGrab() {
@@ -167,13 +188,18 @@ public abstract class Far2Tip extends LinearOpMode {
         if (isStopRequested()) return;
 
         drive.relocalize(start);
-        schedule(turret.track(drive::pose, () -> drive.follower().velocity(), hive::targetX, hive::targetY));
-        schedule(autoRoutine());
+        if (!RobotConfig.STATIC_AIM) schedule(turret.track(drive::pose, () -> drive.follower().velocity(), hive::targetX, hive::targetY));
+        clock.reset();
+        schedule(sequential(
+                race(autoRoutine(), sequential(waitUntil(() -> clock.seconds() >= AutoConfig.PARK_AT_S), instant(() -> rushed = true))),
+                parkNow()
+        ));
 
         while (opModeIsActive()) {
             robot.update();
             Scheduler.execute();
             Drivetrain.autoEndHeading = drive.pose().heading();
+            Hive.autoEndUp = hive.up();
 
             TurretAim.Solution aim = turret.solution();
             if (shooter.on()) shooter.setTarget(Shooter.rpmFor(aim));

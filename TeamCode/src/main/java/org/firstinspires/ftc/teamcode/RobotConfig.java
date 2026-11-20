@@ -16,6 +16,8 @@ import static com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.REVERSE;
 
 @Config
 public class RobotConfig {
+    public static boolean COMPETITION = false; // missing throw
+    public static boolean STATIC_AIM = false; // turret locked forward, flywheel at ShooterConfig.targetRpm
 
     /**
      use pull/push config run configs
@@ -99,9 +101,10 @@ public class RobotConfig {
         public static double sdkP = 5, sdkI = 3, sdkD = 0, sdkF = 12;
 
         public static double READY_TOLERANCE_RPM = 150; // atSpeed() band
+        public static double READY_SETTLE_MS = 100; // in band this long
 
         /**
-         * shoot from anywhere: {distance in, angle deg, rpm, tof s} per recorded spot
+         * shoot from anywhere; {distance in, angle deg, rpm, tof s} per recorded spot
          * deg ccw, red frame, blue rotated 180
          */
         public static final double[][] SHOTS = {
@@ -121,6 +124,7 @@ public class RobotConfig {
         public static double OFFSET_LEFT = 0;
 
         public static double kP = 0.02, kI = 0, kD = 0.0005, kS = 0.04; // power per turret deg
+        public static double kW = 0.0015; // power per chassis deg/s, untuned
         public static double TOLERANCE_DEG = 3; // settled band, kS off inside it
 
         // analog; rev / 0..3.3 v
@@ -140,10 +144,14 @@ public class RobotConfig {
         public static double REST_POS = 0;
         public static double FEED_POS = 0.5;
         public static double FEED_MS = 250; // time be4 return
+        public static double RETURN_MS = 150; // back at rest be4 the next kick
     }
     @Config("Auto")
     public static class AutoConfig {
         public static int VOLLEY_BALLS = 4;
+        public static int[] TIP_BALLS = {2, 8}; // per tip volley
+        public static double TIP_PAUSE_MS = 1000;
+        public static double PARK_AT_S = 28.1;
         public static double VOLLEY_TIMEOUT_MS = 3000;
         public static double INTAKE_DWELL_MS = 500;
         public static double FLOWER_MS = 600;
