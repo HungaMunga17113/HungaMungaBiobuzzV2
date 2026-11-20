@@ -34,7 +34,7 @@ import org.firstinspires.ftc.teamcode.util.hardware.RobotHardware;
 import java.util.Arrays;
 import java.util.List;
 
-/** preload, loading zone, top flower + shoot, left flower, shoot, park in the garden. turret tracks the hive throughout */
+/** preload shoot, garden pick, top flower + shoot, left flower, shoot, park */
 @Autonomous(name = "Red Far - 2 Tip", group = "Autonomous")
 public class RedFar2Tip extends LinearOpMode {
     private RobotHardware robot;
