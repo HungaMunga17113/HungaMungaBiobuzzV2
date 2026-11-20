@@ -9,7 +9,6 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.RobotConfig;
-import org.firstinspires.ftc.teamcode.util.control.Toggle;
 import org.firstinspires.ftc.teamcode.util.hardware.HardwareConfig.Kind;
 import org.firstinspires.ftc.teamcode.util.hardware.HardwareConfig.Type;
 
@@ -53,9 +52,6 @@ public class ServoTester extends LinearOpMode {
             names.add(name);
             servos.add(s);
         }
-
-        Toggle up = new Toggle(), down = new Toggle(), left = new Toggle(), right = new Toggle();
-        Toggle lb = new Toggle(), rb = new Toggle(), x = new Toggle(), y = new Toggle(), b = new Toggle(), a = new Toggle();
         double[] target = new double[servos.size()];
         java.util.Arrays.fill(target, Double.NaN);
         boolean sweeping = false;
@@ -70,8 +66,8 @@ public class ServoTester extends LinearOpMode {
 
         while (opModeIsActive()) {
             int prev = sel;
-            if (up.momentary(gamepad1.dpad_up)) sel--;
-            if (down.momentary(gamepad1.dpad_down)) sel++;
+            if (gamepad1.dpadUpWasPressed()) sel--;
+            if (gamepad1.dpadDownWasPressed()) sel++;
             sel = TesterUtil.wrapIndex(sel, servos.size());
             if (sel != prev) {
                 sweeping = false;
@@ -88,14 +84,14 @@ public class ServoTester extends LinearOpMode {
                 telemetry.addData("power", "%.2f", power);
             } else {
                 double t = target[sel], start = Double.isNaN(t) ? 0.5 : t;
-                if (left.momentary(gamepad1.dpad_left)) t = start - 0.01;
-                if (right.momentary(gamepad1.dpad_right)) t = start + 0.01;
-                if (lb.momentary(gamepad1.left_bumper)) t = start - 0.1;
-                if (rb.momentary(gamepad1.right_bumper)) t = start + 0.1;
-                if (x.momentary(gamepad1.x)) t = 0;
-                if (y.momentary(gamepad1.y)) t = 0.5;
-                if (b.momentary(gamepad1.b)) t = 1;
-                if (a.momentary(gamepad1.a)) {
+                if (gamepad1.dpadLeftWasPressed()) t = start - 0.01;
+                if (gamepad1.dpadRightWasPressed()) t = start + 0.01;
+                if (gamepad1.leftBumperWasPressed()) t = start - 0.1;
+                if (gamepad1.rightBumperWasPressed()) t = start + 0.1;
+                if (gamepad1.xWasPressed()) t = 0;
+                if (gamepad1.yWasPressed()) t = 0.5;
+                if (gamepad1.bWasPressed()) t = 1;
+                if (gamepad1.aWasPressed()) {
                     sweeping = !sweeping;
                     sweep.reset();
                 }

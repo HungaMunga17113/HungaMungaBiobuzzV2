@@ -10,7 +10,6 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.RobotConfig.Names;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
-import org.firstinspires.ftc.teamcode.util.control.Toggle;
 
 /**
  * checks Constants.localizerConfig by pushing the robot by hand.
@@ -31,7 +30,6 @@ public class PPTester extends LinearOpMode {
         }
         PinpointLocalizer localizer = new PinpointLocalizer(hardwareMap, Constants.localizerConfig);
         FtcDashboard dashboard = FtcDashboard.getInstance();
-        Toggle reset = new Toggle();
         double maxX = 0, minX = 0, maxY = 0, minY = 0, turned = 0, lastH = 0;
 
         telemetry.addLine("keep still, pinpoint is calibrating");
@@ -42,7 +40,7 @@ public class PPTester extends LinearOpMode {
         while (opModeIsActive()) {
             localizer.update();
             Pose p = localizer.pose();
-            if (reset.momentary(gamepad1.back)) {
+            if (gamepad1.backWasPressed()) {
                 localizer.setPose(Pose.zero());
                 maxX = minX = maxY = minY = turned = lastH = 0;
                 continue;

@@ -11,7 +11,6 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.teamcode.RobotConfig;
-import org.firstinspires.ftc.teamcode.util.control.Toggle;
 import org.firstinspires.ftc.teamcode.util.hardware.HardwareConfig.Kind;
 
 import java.util.ArrayList;
@@ -49,8 +48,6 @@ public class MotorTester extends LinearOpMode {
             names.add(name);
             motors.add(m);
         }
-
-        Toggle up = new Toggle(), down = new Toggle(), flip = new Toggle(), zero = new Toggle();
         ElapsedTime powered = new ElapsedTime();
         int sel = 0, base = 0;
         boolean wasPowered = false;
@@ -64,8 +61,8 @@ public class MotorTester extends LinearOpMode {
 
         while (opModeIsActive()) {
             int prev = sel;
-            if (up.momentary(gamepad1.dpad_up)) sel--;
-            if (down.momentary(gamepad1.dpad_down)) sel++;
+            if (gamepad1.dpadUpWasPressed()) sel--;
+            if (gamepad1.dpadDownWasPressed()) sel++;
             sel = TesterUtil.wrapIndex(sel, motors.size());
             DcMotorEx m = motors.get(sel);
             String name = names.get(sel);
@@ -73,8 +70,8 @@ public class MotorTester extends LinearOpMode {
                 motors.get(prev).setPower(0);
                 base = m.getCurrentPosition();
             }
-            if (flip.momentary(gamepad1.x)) m.setDirection(m.getDirection().inverted());
-            if (zero.momentary(gamepad1.y)) base = m.getCurrentPosition();
+            if (gamepad1.xWasPressed()) m.setDirection(m.getDirection().inverted());
+            if (gamepad1.yWasPressed()) base = m.getCurrentPosition();
 
             double power = 0;
             if (gamepad1.a) power = TEST_POWER;

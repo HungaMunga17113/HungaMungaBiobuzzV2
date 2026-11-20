@@ -15,7 +15,6 @@ import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.teamcode.RobotConfig.Names;
 import org.firstinspires.ftc.teamcode.RobotConfig.ShooterConfig;
 import org.firstinspires.ftc.teamcode.util.control.PIDFControllerEx;
-import org.firstinspires.ftc.teamcode.util.control.Toggle;
 import org.firstinspires.ftc.teamcode.util.control.Voltage;
 import org.firstinspires.ftc.teamcode.util.hardware.MotorGroup;
 
@@ -55,7 +54,6 @@ public class ShooterTunerOpMode extends LinearOpMode {
 
         PIDFControllerEx ex = new PIDFControllerEx(0, 0, 0);
         StepStats stats = new StepStats();
-        Toggle onButton = new Toggle(), modeButton = new Toggle(), stepButton = new Toggle(), up = new Toggle(), down = new Toggle();
         ElapsedTime stepTimer = new ElapsedTime(), voltTimer = new ElapsedTime();
         boolean on = false, stepping = false;
         Mode lastMode = MODE;
@@ -66,14 +64,14 @@ public class ShooterTunerOpMode extends LinearOpMode {
         waitForStart();
 
         while (opModeIsActive()) {
-            if (onButton.momentary(gamepad1.a)) on = !on;
-            if (modeButton.momentary(gamepad1.y)) MODE = MODE == Mode.EX ? Mode.SDK_PIDF : Mode.EX;
-            if (stepButton.momentary(gamepad1.x)) {
+            if (gamepad1.aWasPressed()) on = !on;
+            if (gamepad1.yWasPressed()) MODE = MODE == Mode.EX ? Mode.SDK_PIDF : Mode.EX;
+            if (gamepad1.xWasPressed()) {
                 stepping = !stepping;
                 stepTimer.reset();
             }
-            if (up.momentary(gamepad1.dpad_up)) ShooterConfig.targetRpm += RPM_STEP;
-            if (down.momentary(gamepad1.dpad_down)) ShooterConfig.targetRpm = Math.max(0, ShooterConfig.targetRpm - RPM_STEP);
+            if (gamepad1.dpadUpWasPressed()) ShooterConfig.targetRpm += RPM_STEP;
+            if (gamepad1.dpadDownWasPressed()) ShooterConfig.targetRpm = Math.max(0, ShooterConfig.targetRpm - RPM_STEP);
             if (MODE != lastMode) {
                 ex.reset();
                 lastMode = MODE;
