@@ -11,6 +11,9 @@ import org.firstinspires.ftc.teamcode.util.drivetrain.MecanumMath;
 
 
 public final class Drivetrain implements Subsystem {
+    /** last auto heading, rad. teleop takes it once, position isn't trusted after auto */
+    public static double autoEndHeading = Double.NaN;
+
     private final Follower follower;
 
     public Drivetrain(Follower follower) {

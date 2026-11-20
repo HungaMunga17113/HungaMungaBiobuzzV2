@@ -1,8 +1,8 @@
 package org.firstinspires.ftc.teamcode.game;
 
 public enum Alliance {
-    BLUE(0),
-    RED(Math.PI);
+    RED(0),
+    BLUE(Math.PI);
 
     /** field heading the drivers look along, rad ccw+ */
     public final double driverForward;

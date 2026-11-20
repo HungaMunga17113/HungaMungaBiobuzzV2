@@ -12,7 +12,7 @@ import com.pedropathing.math.Pose;
 public final class Field {
     public static double SIZE = 144;
 
-    /** hive pivots: red hive is left of center, blue hive right of center (far side from each alliance's drivers) */
+    /** hive pivots: each hive sits on its own drivers' side, red drivers at x = 0 */
     public static double RED_HIVE_X = 58.7;
     public static double BLUE_HIVE_X = 85.3;
     /** each hive tips along y, so its two cell openings sit at these y's (manual: ~18.8 in apart at the pivot) */
@@ -45,7 +45,7 @@ public final class Field {
      */
     public static Pose corner(Alliance a) {
         double cx = ROBOT_LENGTH / 2, cy = ROBOT_WIDTH / 2;
-        return a == Alliance.BLUE
+        return a == Alliance.RED
                 ? new Pose(cx, SIZE - cy, 0)
                 : new Pose(SIZE - cx, cy, Math.PI);
     }

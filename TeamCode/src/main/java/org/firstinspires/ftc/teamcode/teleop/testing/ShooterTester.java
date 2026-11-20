@@ -29,7 +29,7 @@ public class ShooterTester extends LinearOpMode {
     @Override
     public void runOpMode() {
         RobotHardware robot = new RobotHardware(hardwareMap);
-        Intake intake = new Intake(robot.optionalMotor(Names.INTAKE));
+        Intake intake = robot.intake();
         Transfer transfer = new Transfer(robot.optionalServo(Names.TRANSFER));
         DcMotorEx[] fly = new DcMotorEx[Names.FLYWHEEL.length];
         for (int i = 0; i < fly.length; i++) fly[i] = robot.optionalMotor(Names.FLYWHEEL[i]);
@@ -57,6 +57,7 @@ public class ShooterTester extends LinearOpMode {
             if (!on) queued = false;
             if (queued && shooter.atSpeed() && !transfer.isFeeding()) {
                 transfer.startFeed();
+                intake.fired();
                 queued = false;
             }
 

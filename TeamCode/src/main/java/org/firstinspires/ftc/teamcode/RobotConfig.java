@@ -29,9 +29,11 @@ public class RobotConfig {
                     .servo(3, "transfer")
                     .servo(2, "flower")
                     .crServo(1, "turret")
-                    .analog(0, "turretEncoder"))
+                    .analog(0, "turretEncoder")
+                    .digital(0, "intakeBeam"))
             .expansionHub(2, hub -> hub
                     .motor(2, "intake", GOBILDA_5202)
+                    .motor(0, "intake2", GOBILDA_5202)
                     .motor(1, "flywheel2", GOBILDA_5202)
                     .motor(3, "flywheel1", GOBILDA_5202)
                     .i2c(1, "pinpoint", GOBILDA_PINPOINT));
@@ -43,6 +45,8 @@ public class RobotConfig {
         public static final String BACK_RIGHT = "backRight";
         public static final String PINPOINT = "pinpoint";
         public static final String INTAKE = "intake";
+        public static final String INTAKE_2 = "intake2";
+        public static final String INTAKE_BEAM = "intakeBeam";
         public static final String TRANSFER = "transfer";
         public static final String FLOWER = "flower";
         public static final String TURRET = "turret";
@@ -61,6 +65,7 @@ public class RobotConfig {
         public static Direction flywheel1 = REVERSE;
         public static Direction flywheel2 = FORWARD;
         public static Direction intake = FORWARD;
+        public static Direction intake2 = FORWARD;
 
         public static Servo.Direction transfer = Servo.Direction.FORWARD;
         public static Servo.Direction flower = Servo.Direction.FORWARD;
@@ -87,8 +92,8 @@ public class RobotConfig {
         public static boolean voltageComp = true;
 
         // ex controller: power at Voltage.NOMINAL, per flywheel rpm
-        public static double kP = 0, kI = 0, kD = 0, kF = 0;
-        public static double kS = 0, kV = 0, kA = 0;
+        public static double kP = 0.0005, kI = 0, kD = 0, kF = 0;
+        public static double kS = 0.05, kV = 1.0 / 6000, kA = 0; // untuned seed, run SVATuner + paste here
 
         // sdk hub velocity pidf, hub units
         public static double sdkP = 5, sdkI = 3, sdkD = 0, sdkF = 12;
@@ -97,7 +102,7 @@ public class RobotConfig {
 
         /**
          * shoot from anywhere: {distance in, angle deg, rpm, tof s} per recorded spot
-         * deg ccw, blue frame, red rotated 180
+         * deg ccw, red frame, blue rotated 180
          */
         public static final double[][] SHOTS = {
                 // {36, 90, 3200, 0.35},
@@ -126,6 +131,9 @@ public class RobotConfig {
     public static class IntakeConfig {
         public static double IN_POWER = 1;
         public static double OUT_POWER = -0.6;
+        public static double FULL_POWER = 0; // stage 1 once full, negative = spit back out
+        public static int MAX_BALLS = 4;
+        public static boolean BEAM_CLEAR_HIGH = true;
     }
     @Config("Transfer")
     public static class TransferConfig {

@@ -10,6 +10,7 @@ import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction;
+import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
@@ -18,7 +19,9 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.RobotConfig;
 import org.firstinspires.ftc.teamcode.RobotConfig.MotorConfig;
+import org.firstinspires.ftc.teamcode.RobotConfig.Names;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
+import org.firstinspires.ftc.teamcode.subsystems.Intake;
 
 import java.util.List;
 
@@ -114,6 +117,18 @@ public final class RobotHardware {
     /** null if it isn't on the robot yet */
     public AnalogInput optionalAnalog(String name) {
         return hw.optional(AnalogInput.class, name);
+    }
+
+    /** null if it isn't on the robot yet */
+    public DigitalChannel optionalDigital(String name) {
+        DigitalChannel d = hw.optional(DigitalChannel.class, name);
+        if (d != null) d.setMode(DigitalChannel.Mode.INPUT);
+        return d;
+    }
+
+    /** stage 1, stage 2, beam break */
+    public Intake intake() {
+        return new Intake(optionalMotor(Names.INTAKE), optionalMotor(Names.INTAKE_2), optionalDigital(Names.INTAKE_BEAM));
     }
 
     private static DcMotorEx setup(DcMotorEx m, Direction direction) {

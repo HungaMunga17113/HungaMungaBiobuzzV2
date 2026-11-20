@@ -54,14 +54,15 @@ public class MainTeleOp extends OpMode {
     private Hive hive;
 
     private boolean fieldCentric = DrivetrainConfig.useFieldCentric;
-    private boolean headingPending = true, localized, autoAim = true, shooterOn, shotQueued;
+    private double pendingHeading = Double.NaN;
+    private boolean localized, autoAim = true, shooterOn, shotQueued;
 
     @Override
     public void init() {
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         robot = new RobotHardware(hardwareMap);
         drive = new Drivetrain(robot.follower());
-        intake = new Intake(robot.optionalMotor(Names.INTAKE));
+        intake = robot.intake();
         transfer = new Transfer(robot.optionalServo(Names.TRANSFER));
         flower = new Flower(robot.optionalServo(Names.FLOWER));
 
@@ -94,27 +95,29 @@ public class MainTeleOp extends OpMode {
         flower.feed(false);
         transfer.set(TransferConfig.REST_POS);
         turret.setAngle(0);
+        pendingHeading = Double.isNaN(Drivetrain.autoEndHeading) ? alliance.driverForward : Drivetrain.autoEndHeading;
+        Drivetrain.autoEndHeading = Double.NaN;
     }
 
     @Override
     public void loop() {
         robot.update();
 
-        if (headingPending && !robot.pinpointStale()) {
-            drive.follower().setHeading(alliance.driverForward);
-            headingPending = false;
+        if (!Double.isNaN(pendingHeading) && !robot.pinpointStale()) {
+            drive.follower().setHeading(pendingHeading);
+            pendingHeading = Double.NaN;
         }
 
         /// gp1
         // localization
         if (gamepad1.dpadUpWasPressed()) fieldCentric = !fieldCentric;
         if (gamepad1.backWasPressed()) {
-            headingPending = true;
+            pendingHeading = alliance.driverForward;
             gamepad1.rumble(150);
         }
         if (gamepad1.dpadDownWasPressed()) {
             drive.relocalize(Field.corner(alliance));
-            headingPending = false;
+            pendingHeading = Double.NaN;
             localized = true;
             gamepad1.rumble(300);
         }
@@ -172,7 +175,7 @@ public class MainTeleOp extends OpMode {
     /// helpers
     private void handleShooter() {
         // shooter
-        if (gamepad1.right_trigger_pressed) shooterOn = !shooterOn;
+        if (gamepad1.rightTriggerWasPressed()) shooterOn = !shooterOn;
 
         // one ball, fires once the flywheel is at speed
         if (gamepad1.right_bumper && shooterOn) shotQueued = true;
@@ -180,6 +183,7 @@ public class MainTeleOp extends OpMode {
 
         if (shotQueued && shooter.atSpeed() && !transfer.isFeeding()) {
             transfer.startFeed();
+            intake.fired();
             shotQueued = false;
         }
     }
