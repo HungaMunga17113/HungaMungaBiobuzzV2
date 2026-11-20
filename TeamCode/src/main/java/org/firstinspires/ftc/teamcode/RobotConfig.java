@@ -24,21 +24,21 @@ public class RobotConfig {
      */
     public static final HardwareConfig HARDWARE = new HardwareConfig("TimmehV2")
             .controlHub(hub -> hub
-                    .motor(0, "backLeft", GOBILDA_5202)
-                    .motor(1, "frontLeft", GOBILDA_5202)
-                    .motor(2, "frontRight", GOBILDA_5202)
-                    .motor(3, "backRight", GOBILDA_5202)
-                    .servo(3, "transfer")
-                    .servo(2, "flower")
-                    .crServo(1, "turret")
-                    .analog(0, "turretEncoder")
-                    .digital(0, "intakeBeam"))
+                    .motor(0, Names.BACK_LEFT, GOBILDA_5202)
+                    .motor(1, Names.FRONT_LEFT, GOBILDA_5202)
+                    .motor(2, Names.FRONT_RIGHT, GOBILDA_5202)
+                    .motor(3, Names.BACK_RIGHT, GOBILDA_5202)
+                    .crServo(1, Names.TURRET)
+                    .servo(2, Names.FLOWER)
+                    .servo(3, Names.TRANSFER)
+                    .analog(0, Names.TURRET_ENCODER)
+                    .digital(0, Names.INTAKE_BEAM))
             .expansionHub(2, hub -> hub
-                    .motor(2, "intake", GOBILDA_5202)
-                    .motor(0, "intake2", GOBILDA_5202)
-                    .motor(1, "flywheel2", GOBILDA_5202)
-                    .motor(3, "flywheel1", GOBILDA_5202)
-                    .i2c(1, "pinpoint", GOBILDA_PINPOINT));
+                    .motor(0, Names.INTAKE_2, GOBILDA_5202)
+                    .motor(1, Names.FLYWHEEL[1], GOBILDA_5202)
+                    .motor(2, Names.INTAKE, GOBILDA_5202)
+                    .motor(3, Names.FLYWHEEL[0], GOBILDA_5202)
+                    .i2c(1, Names.PINPOINT, GOBILDA_PINPOINT));
 
     public static final class Names {
         public static final String BACK_LEFT = "backLeft";
