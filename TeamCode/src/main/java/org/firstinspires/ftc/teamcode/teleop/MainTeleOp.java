@@ -72,9 +72,12 @@ public class MainTeleOp extends OpMode {
         telemetry.setDisplayFormat(Telemetry.DisplayFormat.HTML);
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         robot = new RobotHardware(hardwareMap);
-        alliance = Alliance.autoEnd != null ? Alliance.autoEnd : Alliance.BLUE;
-        hiveUp = Hive.autoEndUp;
+        boolean carry = RobotConfig.COMPETITION;
+        alliance = carry && Alliance.autoEnd != null ? Alliance.autoEnd : Alliance.BLUE;
+        hiveUp = carry ? Hive.autoEndUp : null;
+        pendingHeading = carry ? Drivetrain.autoEndHeading : Double.NaN;
         Hive.autoEndUp = null;
+        Drivetrain.autoEndHeading = Double.NaN;
         drive = new Drivetrain(robot.follower());
         intake = robot.intake();
         transfer = new Transfer(robot.optionalServo(Names.TRANSFER));
@@ -112,8 +115,7 @@ public class MainTeleOp extends OpMode {
         flower.feed(false);
         transfer.set(TransferConfig.REST_POS);
         turret.setAngle(0);
-        pendingHeading = Double.isNaN(Drivetrain.autoEndHeading) ? alliance.driverForward : Drivetrain.autoEndHeading;
-        Drivetrain.autoEndHeading = Double.NaN;
+        if (Double.isNaN(pendingHeading)) pendingHeading = alliance.driverForward;
     }
 
     @Override

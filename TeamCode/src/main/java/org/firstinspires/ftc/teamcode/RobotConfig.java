@@ -16,7 +16,7 @@ import static com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.REVERSE;
 
 @Config
 public class RobotConfig {
-    public static boolean COMPETITION = false; // missing throw
+    public static boolean COMPETITION = false; // missing throw, rumbles, auto -> teleop carryover
     public static boolean STATIC_AIM = false; // turret locked forward, flywheel at ShooterConfig.targetRpm
 
     /**
