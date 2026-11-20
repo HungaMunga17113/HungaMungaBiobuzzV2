@@ -78,6 +78,24 @@ public class TurretAimTest {
     }
 
     @Test
+    public void leadUsesTofForTheLeadDistance() {
+        // tof 0.01 s per in; driving +y at 20 in/s, target 50 in ahead: converges to ~0.5 s, ~10 in of lead
+        TurretAim a = new TurretAim(-170, 170, 0, 0, 0, (d, ang) -> d / 100);
+        TurretAim.Solution s = a.solve(0, 0, 0, 0, 20, 50, 0);
+        assertEquals(s.distance / 100, s.tof, 1e-3);
+        assertEquals(-20 * s.tof, Math.tan(s.turretRad) * 50, 1e-2);
+    }
+
+    @Test
+    public void shotAngleIsGoalToRobotBearingMinusRef() {
+        // robot straight below the goal: bearing goal->robot = -90
+        assertEquals(-90, aim.solve(0, 0, 0, 0, 0, 0, 50).angleDeg, 1e-9);
+        // red ref (180) rotates it to +90, same as blue mirrored above the goal
+        TurretAim red = new TurretAim(-170, 170, 0, 0, Math.PI, (d, ang) -> 0);
+        assertEquals(90, red.solve(0, 0, 0, 0, 0, 0, 50).angleDeg, 1e-9);
+    }
+
+    @Test
     public void wrap() {
         assertEquals(Math.PI, TurretAim.wrap(-Math.PI), EPS);
         assertEquals(deg(-90), TurretAim.wrap(deg(270)), 1e-9);

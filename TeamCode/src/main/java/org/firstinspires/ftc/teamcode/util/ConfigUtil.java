@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.util;
 
 import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction;
+import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.RobotConfig;
 import org.firstinspires.ftc.teamcode.RobotConfig.MotorConfig;
@@ -46,6 +47,16 @@ public final class ConfigUtil {
         }
     }
 
+    /** MotorConfig.<deviceName> as a Servo.Direction, or null */
+    public static Servo.Direction findServoDirection(String deviceName) {
+        try {
+            Field f = MotorConfig.class.getField(deviceName);
+            return f.getType() == Servo.Direction.class ? (Servo.Direction) f.get(null) : null;
+        } catch (ReflectiveOperationException e) {
+            return null;
+        }
+    }
+
     /// drift
 
     /** where Names / MotorConfig disagree with HARDWARE, empty when in sync */
@@ -70,6 +81,12 @@ public final class ConfigUtil {
         for (Field f : MotorConfig.class.getFields()) {
             if (Modifier.isStatic(f.getModifiers()) && f.getType() == Direction.class && !motors.contains(f.getName())) {
                 out.add("MotorConfig." + f.getName() + " isn't a motor in HARDWARE");
+            }
+        }
+        List<String> servos = RobotConfig.HARDWARE.names(HardwareConfig.Kind.SERVO);
+        for (Field f : MotorConfig.class.getFields()) {
+            if (Modifier.isStatic(f.getModifiers()) && f.getType() == Servo.Direction.class && !servos.contains(f.getName())) {
+                out.add("MotorConfig." + f.getName() + " isn't a servo in HARDWARE");
             }
         }
         return out;

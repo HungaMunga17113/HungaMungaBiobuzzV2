@@ -6,9 +6,12 @@ import com.pedropathing.revhub.localizers.PinpointLocalizer;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver.DeviceStatus;
 import com.qualcomm.hardware.lynx.LynxModule;
+import com.qualcomm.robotcore.hardware.AnalogInput;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -88,6 +91,29 @@ public final class RobotHardware {
     public DcMotorEx optionalMotor(String name) {
         DcMotorEx m = hw.orStub(DcMotorEx.class, name);
         return Hw.isStub(m) ? m : setup(m, ConfigUtil.direction(name));
+    }
+
+    /** no-op stub if the servo isn't on the robot yet, direction from MotorConfig.<name> (FORWARD if none) */
+    public Servo optionalServo(String name) {
+        Servo s = hw.orStub(Servo.class, name);
+        if (Hw.isStub(s)) return s;
+        Servo.Direction d = ConfigUtil.findServoDirection(name);
+        s.setDirection(d == null ? Servo.Direction.FORWARD : d);
+        return s;
+    }
+
+    /** no-op stub if missing, direction from the MotorConfig.<name> servo direction (FORWARD if none) */
+    public CRServo optionalCrServo(String name) {
+        CRServo s = hw.orStub(CRServo.class, name);
+        if (Hw.isStub(s)) return s;
+        Servo.Direction d = ConfigUtil.findServoDirection(name);
+        s.setDirection(d == Servo.Direction.REVERSE ? Direction.REVERSE : Direction.FORWARD);
+        return s;
+    }
+
+    /** null if it isn't on the robot yet */
+    public AnalogInput optionalAnalog(String name) {
+        return hw.optional(AnalogInput.class, name);
     }
 
     private static DcMotorEx setup(DcMotorEx m, Direction direction) {

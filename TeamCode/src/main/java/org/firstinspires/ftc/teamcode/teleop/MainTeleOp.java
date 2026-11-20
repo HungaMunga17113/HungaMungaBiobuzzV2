@@ -6,21 +6,13 @@ import com.pedropathing.math.Pose;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.Servo;
 
-import org.firstinspires.ftc.teamcode.RobotConfig.DrivetrainConfig;
-import org.firstinspires.ftc.teamcode.RobotConfig.IntakeConfig;
-import org.firstinspires.ftc.teamcode.RobotConfig.TransferConfig;
-import org.firstinspires.ftc.teamcode.RobotConfig.Names;
+import org.firstinspires.ftc.teamcode.RobotConfig.*;
+import org.firstinspires.ftc.teamcode.subsystems.*;
+
 import org.firstinspires.ftc.teamcode.game.Alliance;
 import org.firstinspires.ftc.teamcode.game.Field;
 import org.firstinspires.ftc.teamcode.game.Hive;
-import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
-import org.firstinspires.ftc.teamcode.subsystems.Intake;
-import org.firstinspires.ftc.teamcode.subsystems.Shooter;
-import org.firstinspires.ftc.teamcode.subsystems.Subsystem;
-import org.firstinspires.ftc.teamcode.subsystems.Transfer;
-import org.firstinspires.ftc.teamcode.subsystems.Turret;
 import org.firstinspires.ftc.teamcode.util.aim.TurretAim;
 import org.firstinspires.ftc.teamcode.util.drivetrain.MecanumMath;
 import org.firstinspires.ftc.teamcode.util.hardware.MotorGroup;
@@ -40,6 +32,7 @@ import java.util.List;
  *   left t+b       intake in / out
  *   r trigger      shooter on / off
  *   r bumper       shoot one ball (waits for the flywheel to be at speed)
+ *   y              flower mech toggle
  *
  * gp2 (operator)
  *   y                 auto-aim on / off (off = turret forward)
@@ -54,6 +47,7 @@ public class MainTeleOp extends OpMode {
     private Transfer transfer;
     private Shooter shooter;
     private Turret turret;
+    private Flower flower;
     private List<Subsystem> subsystems;
 
     private Alliance alliance;
@@ -68,14 +62,16 @@ public class MainTeleOp extends OpMode {
         robot = new RobotHardware(hardwareMap);
         drive = new Drivetrain(robot.follower());
         intake = new Intake(robot.optionalMotor(Names.INTAKE));
-        transfer = new Transfer(robot.hw.orStub(Servo.class, Names.TRANSFER));
+        transfer = new Transfer(robot.optionalServo(Names.TRANSFER));
+        flower = new Flower(robot.optionalServo(Names.FLOWER));
 
         DcMotorEx[] fly = new DcMotorEx[Names.FLYWHEEL.length];
         for (int i = 0; i < fly.length; i++) fly[i] = robot.optionalMotor(Names.FLYWHEEL[i]);
 
         shooter = new Shooter(new MotorGroup(fly), robot::voltage);
-        turret = new Turret();
-        subsystems = Arrays.asList(drive, intake, transfer, shooter, turret);
+        turret = new Turret(robot.optionalCrServo(Names.TURRET), robot.optionalAnalog(Names.TURRET_ENCODER));
+
+        subsystems = Arrays.asList(drive, intake, transfer, shooter, turret, flower);
     }
 
     @Override
@@ -86,7 +82,7 @@ public class MainTeleOp extends OpMode {
         if (gamepad1.b || gamepad2.b) Alliance.selected = Alliance.RED;
 
         telemetry.addLine("ALLIANCE: " + Alliance.selected + "   (x = blue, b = red)");
-        telemetry.addLine("after start: square into corner + dpad down (gp1) to localize");
+        telemetry.addLine("square into corner + dpad down (gp1) to localize");
         robot.addInitWarnings(telemetry);
     }
 
@@ -95,6 +91,7 @@ public class MainTeleOp extends OpMode {
         alliance = Alliance.selected;
         hive = new Hive(alliance);
 
+        flower.feed(false);
         transfer.set(TransferConfig.REST_POS);
         turret.setAngle(0);
     }
@@ -131,6 +128,7 @@ public class MainTeleOp extends OpMode {
 
         handleIntake();
         handleShooter();
+        handleFlower();
 
         // gp2
         if (gamepad2.yWasPressed()) autoAim = !autoAim;
@@ -139,8 +137,9 @@ public class MainTeleOp extends OpMode {
                 ? turret.aimAt(drive.pose(), drive.follower().velocity(), hive.targetX(), hive.targetY())
                 : null;
         if (!tracking) turret.setAngle(0);
-        shooter.setTarget(shooterOn ? Shooter.rpmFor(aim != null ? aim.distance : Double.NaN) : 0);
+        shooter.setTarget(shooterOn ? Shooter.rpmFor(aim) : 0);
 
+        // tip notifier
         if (gamepad2.dpadLeftWasPressed()) {
             hive.tipped();
             gamepad2.rumble(200);
@@ -173,7 +172,7 @@ public class MainTeleOp extends OpMode {
     /// helpers
     private void handleShooter() {
         // shooter
-        if (gamepad1.right_trigger > 0.3) shooterOn = !shooterOn;
+        if (gamepad1.right_trigger_pressed) shooterOn = !shooterOn;
 
         // one ball, fires once the flywheel is at speed
         if (gamepad1.right_bumper && shooterOn) shotQueued = true;
@@ -188,6 +187,7 @@ public class MainTeleOp extends OpMode {
         intake.set((gamepad1.left_trigger  > 0.3) ? IntakeConfig.IN_POWER
                 : (gamepad1.left_bumper) ? IntakeConfig.OUT_POWER : 0);
     }
+    private void handleFlower() { if (gamepad1.yWasPressed()) flower.toggle(); }
 
     /** heading relative to "away from our drivers", NaN = robot-centric */
     private double driverHeading() {

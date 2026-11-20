@@ -9,16 +9,15 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.RobotConfig.ShooterConfig;
+import org.firstinspires.ftc.teamcode.util.aim.ShotTable;
+import org.firstinspires.ftc.teamcode.util.aim.TurretAim;
 import org.firstinspires.ftc.teamcode.util.control.PIDFControllerEx;
 import org.firstinspires.ftc.teamcode.util.control.Voltage;
 import org.firstinspires.ftc.teamcode.util.hardware.MotorGroup;
 
 import java.util.function.DoubleSupplier;
 
-/**
- * todo: rpm from aim distance (rpmFor)
- * todo: tune shooter
- */
+/** todo: tune shooter */
 public final class Shooter implements Subsystem {
     private final MotorGroup flywheel;
     private final DoubleSupplier volts;
@@ -32,9 +31,10 @@ public final class Shooter implements Subsystem {
         flywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
     }
 
-    /** todo: fit a distance -> rpm table once shooter built */
-    public static double rpmFor(double distanceIn) {
-        return ShooterConfig.targetRpm;
+    /** ShooterConfig.SHOTS at the aim's distance + angle, targetRpm without an aim or table */
+    public static double rpmFor(TurretAim.Solution aim) {
+        double rpm = aim == null ? Double.NaN : ShotTable.fromConfig().rpm(aim.distance, aim.angleDeg);
+        return Double.isNaN(rpm) ? ShooterConfig.targetRpm : rpm;
     }
 
     public void setTarget(double rpm) {

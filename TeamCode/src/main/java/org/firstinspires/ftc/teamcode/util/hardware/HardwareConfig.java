@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * describes everything about robot config (FTC SDK 12.0) and what you'd see on the ds:
+ * describes everything on robot config (FTC SDK 12.0) and what you'd see on the ds:
  * includes:
  * <ul>
  *   <li>all hubs over RS485</li>
@@ -18,8 +18,6 @@ import java.util.Map;
  *   <li>motor, servo, analog, PWM, digital and I2C ports on each hub</li>
  *   <li>webcams and ethernet devices such as a Limelight</li>
  * </ul>
- *
- * mistakes r collected so no crash
  */
 public final class HardwareConfig {
 

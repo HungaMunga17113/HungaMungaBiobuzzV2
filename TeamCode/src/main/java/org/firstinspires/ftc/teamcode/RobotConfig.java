@@ -9,6 +9,7 @@ import org.firstinspires.ftc.teamcode.util.drivetrain.Curve;
 import org.firstinspires.ftc.teamcode.util.drivetrain.CurveParams;
 import org.firstinspires.ftc.teamcode.util.hardware.HardwareConfig;
 import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction;
+import com.qualcomm.robotcore.hardware.Servo;
 
 import static com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.FORWARD;
 import static com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.REVERSE;
@@ -25,7 +26,10 @@ public class RobotConfig {
                     .motor(1, "frontLeft", GOBILDA_5202)
                     .motor(2, "frontRight", GOBILDA_5202)
                     .motor(3, "backRight", GOBILDA_5202)
-                    .servo(3, "transfer"))
+                    .servo(3, "transfer")
+                    .servo(2, "flower")
+                    .crServo(1, "turret")
+                    .analog(0, "turretEncoder"))
             .expansionHub(2, hub -> hub
                     .motor(2, "intake", GOBILDA_5202)
                     .motor(1, "flywheel2", GOBILDA_5202)
@@ -40,6 +44,9 @@ public class RobotConfig {
         public static final String PINPOINT = "pinpoint";
         public static final String INTAKE = "intake";
         public static final String TRANSFER = "transfer";
+        public static final String FLOWER = "flower";
+        public static final String TURRET = "turret";
+        public static final String TURRET_ENCODER = "turretEncoder";
         public static final String[] FLYWHEEL = {"flywheel1", "flywheel2"};
         private Names() {}
     }
@@ -53,8 +60,11 @@ public class RobotConfig {
         public static Direction frontRight = REVERSE;
         public static Direction flywheel1 = REVERSE;
         public static Direction flywheel2 = FORWARD;
-        // public static Direction transfer = FORWARD;
         public static Direction intake = FORWARD;
+
+        public static Servo.Direction transfer = Servo.Direction.FORWARD;
+        public static Servo.Direction flower = Servo.Direction.FORWARD;
+        public static Servo.Direction turret = Servo.Direction.FORWARD;
 
         private MotorConfig() {}
     }
@@ -85,28 +95,54 @@ public class RobotConfig {
 
         public static double READY_TOLERANCE_RPM = 150; // atSpeed() band
 
+        /**
+         * shoot from anywhere: {distance in, angle deg, rpm, tof s} per recorded spot
+         * deg ccw, blue frame, red rotated 180
+         */
+        public static final double[][] SHOTS = {
+                // {36, 90, 3200, 0.35},
+                // {72, 90, 3900, 0.50},
+                // {72, 45, 4000, 0.52},
+        };
+
     }
 
     /** 0 = forward (intake side), ccw+ (unit circle, seen from above) */
     @Config("Turret")
     public static class TurretConfig {
-        public static double MIN_DEG = -170;
-        public static double MAX_DEG = 170;
+        public static double MIN_DEG = -150;
+        public static double MAX_DEG = 150;
         public static double OFFSET_FORWARD = 0; // turret pivot from robot center, in
         public static double OFFSET_LEFT = 0;
-        public static double LEAD_S = 0; // shoot-on-the-move lead (~ball flight time), 0 = off
-    }
 
+        public static double kP = 0.02, kI = 0, kD = 0.0005, kS = 0.04; // power per turret deg
+        public static double TOLERANCE_DEG = 3; // settled band, kS off inside it
+
+        // analog; rev / 0..3.3 v
+        public static double ENCODER_ZERO_V = 1.65; // turret facing forward, read off telemetry
+        public static double ENCODER_RATIO = 1; // turret rev per shaft rev, negative if it reads backwards
+    }
     @Config("Intake")
     public static class IntakeConfig {
         public static double IN_POWER = 1;
         public static double OUT_POWER = -0.6;
     }
-
     @Config("Transfer")
     public static class TransferConfig {
         public static double REST_POS = 0;
         public static double FEED_POS = 0.5;
         public static double FEED_MS = 250; // time be4 return
+    }
+    @Config("Auto")
+    public static class AutoConfig {
+        public static int VOLLEY_BALLS = 4;
+        public static double VOLLEY_TIMEOUT_MS = 3000;
+        public static double INTAKE_DWELL_MS = 500;
+        public static double FLOWER_MS = 600;
+    }
+    @Config("Flower")
+    public static class FlowerConfig {
+        public static double REST_POS = 0;
+        public static double FEED_POS = 0.5;
     }
 }
